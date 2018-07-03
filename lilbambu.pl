@@ -8,12 +8,13 @@ use Getopt::Std;
 use Switch;
 binmode(STDOUT, ":utf8");
 use Env;
-
+#
 ### OVERALL PARAMETERS #####
+#
 use lib "/home/jbianchi/lilbambu/lib/perl";
 #~ use wml;
-use ODM_load;
-my $lilbambu_conf_file="/home/jbianchi/lilbambu/conf/config.ini";
+use odm_load;
+my $lilbambu_conf_file="/home/jbianchi/lilbambu/config/lilbambu.ini";
 
 if(!defined $ARGV[0]) {
 	print "#####   lilbambu.pl version 0.0 ######
@@ -21,6 +22,13 @@ if(!defined $ARGV[0]) {
 	./lilbambu.pl <accion> <parametros key=value> \n";
 	exit;
 }
+#
+### connect to db ###
+#
+my $dbh=odm_load::dbConnect($lilbambu_conf_file);
+#
+### shift accion
+#
 my $accion = shift @ARGV;
 chomp $accion;
 switch(lc($accion)) {
@@ -61,27 +69,16 @@ switch(lc($accion)) {
 		#~ foreach(keys %OPTS) {
 			#~ print "key:$_, val:$OPTS{$_}\n";
 		#~ }
-		my $res = wml($config_file,\%OPTS);
+		my $res = wml($dbh,\%OPTS);
 		print "res:$res\n";
 	}
-	case "ODM_load"
-	{
-		my @validFunctions = ("addVariable");
-		my %validFunctions = map { $_=> 1 } @validFunctions;
-		my $funcion = shift @ARGV;
-		if(!defined $validFunctions{$funcion}) {
-			die "La funcion $funcion de ODM_load no es válida";
-		}
+	case "addVariable" {
 		my (%opts) = getOptions(\@ARGV);
-		switch($funcion) {
-			case "addVariable" {
-				my $res=addVariable(\%opts);
-				print "$res\n";
-				exit;
-			} else {
-				die "La funcion $funcion de ODM_load no es válida";
-			}
-		}
+		my $res=odm_load::addVariable($dbh,\%opts);
+		print "$res\n";
+		exit;
+	} else {
+	die "La funcion $accion de odm_load no es válida";
 	}
 }
 

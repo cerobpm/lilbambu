@@ -15,31 +15,32 @@ use Config::IniFiles;
 
 $VERSION     = 1.00;
 @ISA         = qw(Exporter);
-@EXPORT      = qw(wml);
-# @EXPORT_OK   = qw(wml);
-%EXPORT_TAGS = ( DEFAULT => [qw(odm_load)]);
+@EXPORT      = qw(dbConnect,addVariable);
+@EXPORT_OK   = qw(dbConnect,addVariable);
+%EXPORT_TAGS = ( DEFAULT => [qw(dbConnect,addVariable)]);
 
 # FUNCION load_conf
 #
 # $_[0] => STRING   configuration file location .ini
 
-sub db_connect {
+sub dbConnect {
 	#
 	#  LEE ARCHIVO DE CONFIGURACION   #
 	#
         my $config_file = $_[0];
         my $cfg = Config::IniFiles->new( -file => $_[0] ) or die "No se encontro el archivo de configuracion $config_file";
         #~ die "Couldn't interpret the configuration file ($config_file) that was given.\nError details follow: $@\n" if $@;
-        if(!defined $cfg->val{'all','DBDRIVER'}) { die "Falta parametro DB_HOST en archivo de configuracion '$configfile'\n"; }
-        if(!defined $cfg->val{'all','DBHOST'}) { die "Falta parametro DB_HOST en archivo de configuracion '$configfile'\n"; }
-        my $port = (!defined $cfg->val{'all','DBPORT'}) ? "" : (":" . $cfg->val{'all','DBPORT'});
-        if(!defined $cfg->val{'all','DBNAME'}) { die "Falta parametro DB_NAME en archivo de configuracion '$configfile'\n"; }
-        if(!defined $cfg->val{'all','DBUSER'}) { die "Falta parametro DB_USER en archivo de configuracion '$configfile'\n";}
-        my $auth = (!defined $cfg->val{'all','DBPASSWORD'}) ? "" : $cfg->val{'all','DBPASSWORD'};
+        if(!defined $cfg->val('all','DBDRIVER')) { die "Falta parametro DB_HOST en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val('all','DBHOST')) { die "Falta parametro DB_HOST en archivo de configuracion '$config_file'\n"; }
+        my $port = (!defined $cfg->val('all','DBPORT')) ? "" : (":" . $cfg->val('all','DBPORT'));
+        if(!defined $cfg->val('all','DBNAME')) { die "Falta parametro DB_NAME en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val('all','DBUSER')) { die "Falta parametro DB_USER en archivo de configuracion '$config_file'\n";}
+        my $auth = (!defined $cfg->val('all','DBPASSWORD')) ? "" : $cfg->val('all','DBPASSWORD');
 	#
   	# CONECTA CON DATA SOURCE DB #
-		my $source = "dbi:" . $cfg->val{'all','DBDRIVER'} . ":" . $cfg->val{'all','DBNAME'} . $port;
-        my $dbh = DBI->connect($source, $cfg->val{'all','DBUSER', $auth, { RaiseError => 1 }) or die $DBI::errstr;
+  	#
+		my $source = "dbi:" . $cfg->val('all','DBDRIVER') . ":" . $cfg->val('all','DBNAME') . $port;
+        my $dbh = DBI->connect($source, $cfg->val('all','DBUSER'), $auth, { RaiseError => 1 }) or die $DBI::errstr;
 		return $dbh;
 }
 
@@ -86,7 +87,7 @@ sub add_variable {
 				die "Parametro $key es de tipo erroneo, debe ser $ColumnsTypes[$index]";
 			}	
 			$varstr.= "\"" . $key . "\",";
-			if($ColumnTypes[$index] eq "SCALAR") {
+			if($ColumnsTypes[$index] eq "SCALAR") {
 				$valstr.= "\"" . $_[1]->{$key} . "\",";
 			} else {
 				$valstr.= $_[1]->{$key} . ",";
@@ -95,7 +96,7 @@ sub add_variable {
 		chop $varstr;
 		chop $valstr;
 		my $stmt =qq(insert into "Variables" ($varstr) values ($valstr) on conflict (\"\") do nothing);
-		my $rows = $_[0]->do($stmt) or die $dbh->errstr;
+		my $rows = $_[0]->do($stmt) or die $_[0]->errstr;
 		return "$rows rows affected";
 	}
 }
