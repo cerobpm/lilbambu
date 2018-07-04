@@ -1,0 +1,28 @@
+./lilbambu.pl addVariable VariableName='Precipitation' VariableCode='1' VariableUnitsID=54 DataType='Cumulative' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Precipitation' -U
+./lilbambu.pl addVariable VariableName='Gage height' VariableCode='2' VariableUnitsID=52 DataType='Continuous' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Discharge' VariableCode='4' VariableUnitsID=36 DataType='Continuous' ValueType='Derived Value' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Temperature' VariableCode='5' VariableUnitsID=96 DataType='Minimum' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Temperature' VariableCode='6' VariableUnitsID=96 DataType='Maximum' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Temperature' VariableCode='7' VariableUnitsID=96 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Temperature' VariableCode='8' VariableUnitsID=96 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Soil' -U
+./lilbambu.pl addVariable VariableName='Wind speed' VariableCode='9' VariableUnitsID=116 DataType='Maximum' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Wind speed' VariableCode='10' VariableUnitsID=116 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Wind direction' VariableCode='11' VariableUnitsID=8 DataType='Mode' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Relative humidity' VariableCode='12' VariableUnitsID=1 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Sunshine duration' VariableCode='13' VariableUnitsID=103 DataType='Cumulative' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Global Radiation'  VariableCode='14' VariableUnitsID=144 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Evapotranspiration, potential' VariableCode='15' VariableUnitsID=54 DataType='Cumulative' ValueType='Derived Value' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Barometric pressure'  VariableCode='16' VariableUnitsID=315 DataType='Average' ValueType='Field Observation'  TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Cloud cover'  VariableCode='17' VariableUnitsID=353 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Not Relevant' -U
+./lilbambu.pl addVariable VariableName='Sea-level pressure'  VariableCode='18' VariableUnitsID=16 DataType='Average' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=104 SampleMedium='Air' -U
+./lilbambu.pl addVariable VariableName='Volumetric water content'  VariableCode='20' VariableUnitsID=349 DataType='Sporadic' ValueType='Derived Value' TimeSupport=0 TimeUnitsID=100 SampleMedium='Not Relevant' -U
+./lilbambu.pl addVariable VariableName='Flood magnitude'  VariableCode='21' VariableUnitsID=351 DataType='Sporadic' ValueType='Derived Value' TimeSupport=1 TimeUnitsID=104 SampleMedium='Not Relevant' -U
+./lilbambu.pl addVariable VariableName='Reservoir inflow'  VariableCode='22' VariableUnitsID=36 DataType='Continuous' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Reservoir outflow'  VariableCode='23' VariableUnitsID=36 DataType='Continuous' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Reservoir spilled'  VariableCode='24' VariableUnitsID=36 DataType='Continuous' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Transfered discharge'  VariableCode='25' VariableUnitsID=36 DataType='Continuous' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Reservoir storage'  VariableCode='26' VariableUnitsID=126 DataType='Continuous' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Precipitation'  VariableCode='27' VariableUnitsID=54 DataType='Cumulative' ValueType='Field Observation' TimeSupport=1 TimeUnitsID=103 SampleMedium='Precipitation' -U
+./lilbambu.pl addVariable VariableName='Gage height'  VariableCode='28' VariableUnitsID=52 DataType='Sporadic' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Discharge'  VariableCode='29' VariableUnitsID=36 DataType='Sporadic' ValueType='Field Observation' TimeSupport=0 TimeUnitsID=100 SampleMedium='Surface Water' -U
+./lilbambu.pl addVariable VariableName='Water extent'  VariableCode='30' VariableUnitsID=349 DataType='Continuous' ValueType='Derived Value' TimeSupport=0 TimeUnitsID=100 SampleMedium='Not Relevant' -U

@@ -19,9 +19,13 @@ my $lilbambu_conf_file="/home/jbianchi/lilbambu/config/lilbambu.ini";
 if(!defined $ARGV[0]) {
 	print "#####   lilbambu.pl version 0.0 ######
 	sintaxis:
-	./lilbambu.pl <accion> <parametros key=value> \n";
+	./lilbambu.pl <accion> <-opciones><parametros key=value> \n";
 	exit;
 }
+#
+# opciones "-" validas
+#
+#~ my %validOpts=("U"=>"onConflictAction");
 #
 ### connect to db ###
 #
@@ -72,9 +76,17 @@ switch(lc($accion)) {
 		my $res = wml($dbh,\%OPTS);
 		print "res:$res\n";
 	}
-	case "addVariable" {
-		my (%opts) = getOptions(\@ARGV);
-		my $res=odm_load::addVariable($dbh,\%opts);
+	case "addvariable" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		#~ foreach (keys %{$params}) {
+			#~ print "$_:" . ${params}->{$_} . "\n";
+		#~ }
+		#~ print "options\n";
+		#~ foreach(@{$opciones}) {
+			#~ print "$_\n";
+		#~ }
+			
+		my $res=odm_load::addVariable($dbh,$params,$opciones);
 		print "$res\n";
 		exit;
 	} else {
@@ -85,15 +97,21 @@ switch(lc($accion)) {
 ## GET OPTIONS
 
 sub getOptions {
-    my (%opts);
+    my (%params,@opciones);
     while (@_) {
         my $opt = shift;
-        if ($opt =~ /(^.+)=(.+$)/) {
-            $opts{$1} = $2;
+        if ($opt=~ /^-/) {
+			#~ if(!defined $validOpts{$1}) {
+				#~ die "Opcion $opt no válida";
+			#~ }
+			#~ print "opcion:$opt\n";
+			push @opciones, $opt;
+		}elsif ($opt =~ /(^.+)=(.+$)/) {
+            $params{$1} = $2;
         } else {
-            $opts{$opt} = 1;
+            $params{$opt} = 1;
         }
     }
 
-    return (\%opts);
+    return (\%params,\@opciones);
 }
