@@ -1,5 +1,22 @@
 package odm_load;
 
+=head1 NAME
+
+odm_load package
+
+=head1 SYNOPSIS
+
+	use odm_load;
+	my $dbh=odm_load::dbConnect;
+	my %params=("VariableCode"=>"2","VariableName"=>"Gage height","VariableUnitsID"=>52);
+	my @opts=("-U");
+	my $status=odm_load::addVariable($dbh,\%params,\@opts);
+
+=head1 DESCRIPTION
+	
+	Este modulo sirve para insertar, editar y seleccionar registros de la base de datos ODM/PGSQL
+	
+=cut
 use strict;
 use Exporter;
 use CGI;
@@ -15,13 +32,17 @@ use Config::IniFiles;
 
 $VERSION     = 1.00;
 @ISA         = qw(Exporter);
-@EXPORT      = qw(dbConnect,addVariable,columnTypeCheck);
-@EXPORT_OK   = qw(dbConnect,addVariable,columnTypeCheck);
-%EXPORT_TAGS = ( DEFAULT => [qw(dbConnect,addVariable,columnTypeCheck)]);
+@EXPORT      = qw(dbConnect,addVariable,columnTypeCheck,GetVariables);
+@EXPORT_OK   = qw(dbConnect,addVariable,columnTypeCheck,GetVariables);
+%EXPORT_TAGS = ( DEFAULT => [qw(dbConnect,addVariable,columnTypeCheck,GetVariables)]);
 
-# FUNCION dbConnect
-#
-# $_[0] => STRING   configuration file location .ini
+my $query_string = (defined $ENV{QUERY_STRING}) ? (defined $ENV{REQUEST_URI}) ? ( $ENV{HTTP_HOST} . $ENV{DOCUMENT_ROOT} .  $ENV{REQUEST_URI} . "?" . $ENV{QUERY_STRING} ) : $ENV{QUERY_STRING} : "local";
+
+=head2 FUNCION dbConnect
+
+	$_[0] => STRING   configuration file location .ini
+
+=cut 
 
 sub dbConnect {
 	#
@@ -44,22 +65,23 @@ sub dbConnect {
         #~ my $dbh = DBI->connect("dbi:Pg:db=ODM","jbianchi","",{ RaiseError => 1 }) or die $DBI::errstr;
 
         my $dbh = DBI->connect($source, $cfg->val('all','DBUSER'), $auth, { RaiseError => 1 }) or die $DBI::errstr;
+        #~ print "Conectado a $source\n";
 		return $dbh;
 }
 
-# FUNCION add_variables
-#
-# $_[0] => database handle object (from DBI->connect)
-# $_[1] => HASHREF     parametros: ( "VariableCode"=> "10" , "VariableName"=> "Discharge","VariableUnitsID"=>36)
-# $_[2] => ARRAYREF  options   -U => on conflict action do update 
+=head2 FUNCION addVariables
 
+	$_[0] => database handle object (from DBI->connect)
+	$_[1] => HASHREF     parametros: ( "VariableCode"=> "10" , "VariableName"=> "Discharge","VariableUnitsID"=>36)
+	$_[2] => ARRAYREF  options   -U => on conflict action do update 
+=cut
 
 sub addVariable {
-	my @validColumns = ("VariableCode","VariableName","VariableUnitsID", "SampleMedium","ValueType","IsRegular","DataType", "GeneralCategory","TimeSupport","TimeUnitsID","SampleMedium");
-	my %validColumns  =  map { $_ => 1 } @validColumns;
-	my @requiredColumns = ("VariableCode","VariableName","VariableUnitsID");
-	my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
-	my @requiredColumnsTypes = ("STRING","STRING","INTEGER");
+	my %validColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER");
+	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
+	my %requiredColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER");
+	#~ my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
+	#~ my @requiredColumnsTypes = ("STRING","STRING","INTEGER");
 	if(!defined $_[1]) {
 		die "Faltan parametros";
 	}
@@ -73,8 +95,8 @@ sub addVariable {
 	#
 	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
 	#
-	columnTypeCheck(\@requiredColumns,\@requiredColumnsTypes,$_[1],1);
-	columnTypeCheck(\@validColumns,\@ColumnsTypes,$_[1],2);
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	my %types=columnTypeCheck(\%validColumns,$_[1],2);
 	#
 	# CREA SENTENCIA DE INSERCION ITERANDO $_[1] y CHEQUEANDO KEYS Y TIPOS   #
 	#
@@ -82,16 +104,11 @@ sub addVariable {
 	my $valstr="";
 	my $updstr="";
 	foreach my $key (keys %{$_[1]}) {
-		#~ if(!defined $validColumns{$key}) {
-			#~ die "Parametro $key incorrecto";
-		#~ }
-		my ($index) = grep { $validColumns[$_] eq $key } 0..$#validColumns;
-		#~ if(type($_[1]->{$key}) ne $ColumnsTypes[$index]) {
-			#~ die "Parametro $key es de tipo erroneo, debe ser $ColumnsTypes[$index]";
-		#~ }	
+		#~ my ($index) = grep { $validColumns[$_] eq $key } 0..$#validColumns;
 		$varstr.= "\"" . $key . "\",";
 		$updstr.= "\"" . $key . "\"=";
-		if($ColumnsTypes[$index] eq "STRING") {
+		#~ if($ColumnsTypes[$index] eq "STRING") {
+		if($types{$key} eq "STRING") {
 			$valstr.= "'" . $_[1]->{$key} . "',";
 			$updstr .= "'" . $_[1]->{$key} . "',";
 		} else {
@@ -119,49 +136,121 @@ sub addVariable {
 	#~ return 1;
 }
 
-#
-# funcion columnTypeCheck
-#
-# $_[0] => Column Names ARRAY
-# $_[1] => Column Types ARRAY
-# $_[2] => input Columns HASH
-# $_[3] => 1:allRequired, 2:checkValid, 0:none
+
+=head2 funcion columnTypeCheck
+
+	$_[0] => Column Names ARRAY
+	$_[1] => Column Types ARRAY
+	$_[2] => input Columns HASH
+	$_[3] => 1:allRequired, 2:checkValid, 0:none
+=cut
+
 sub columnTypeCheck {
-	if($_[3] == 2) {
-		my %cnames = map { $_ => 1 } @{$_[0]};
+	my %types;
+	if($_[2] == 2) {
+		#~ my %cnames;
+		#~ @cnames{@{$_[0]}}=@{$_[1]};
 		#~ foreach my $k (keys %cnames) {
 			#~ print "validColumns $k: $cnames{$k}\n";
 		#~ }
-		foreach my $key (keys %{$_[2]}) {
-			if(!defined $cnames{$key}) {
+		foreach my $key (keys %{$_[1]}) {
+			if(!defined $_[0]->{$key}) {
 				die "Parametro " . $key . " incorrecto";
 			}
 		}
 	}
-	for(my $i=0;$i<@$_[0];$i++)
+	foreach my $key (keys %{$_[0]})
 	{
-		if($_[3] == 1 && !defined $_[2]->{$_[0]->[$i]}) 
+		if($_[2] == 1 && !defined $_[1]->{$key}) 
 		{
-			die "Falta $_[0]->[$i]";
+			die "Falta $key";
 		}
-		switch ($_[1]->[$i]) {
-			case "INTEGER" {
-				if($_[2]->{$_[0]->[$i]} !~ /^\d+$/) {
-					die "Parametro $_[0]->[$i] (" . $_[2]->{$_[0]->[$i]} . ") es de tipo erroneo, debe ser INTEGER";
+		elsif (defined $_[1]->{$key}) {
+			switch ($_[0]->{$key}) {
+				case "INTEGER" {
+					if($_[1]->{$key} !~ /^\d+$/) {
+						die "Parametro $key (" . $_[1]->{$key} . ") es de tipo erroneo, debe ser INTEGER";
+					}
+				} case "FLOAT" {
+					if($_[1]->{$key} !~ /^([+-]?)(?=\d&\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/) {
+							die "Parametro $key (" . $_[1]->{$key} . ") es de tipo erroneo, debe ser FLOAT";
+						}
+				} case "BOOLEAN" {
+					if($_[1]->{$key} !~ /^(true|TRUE|false|FALSE)$/) {
+							die "Parametro $key (" . $_[1]->{$key} . ") es de tipo erroneo, debe ser BOOLEAN";
+						}
+				} else {
+					if(type($_[1]->{$key}) ne $_[0]->{$key}) {
+						die "Parametro $key (" . $_[1]->{$key} . ") es de tipo erroneo, debe ser " . $_[0]->{$key} . " , pero es " . type($_[1]->{$key}) . ".";
+					}
 				}
-			} case "FLOAT" {
-				if($_[2]->{$_[0]->[$i]} !~ /^([+-]?)(?=\d&\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/) {
-						die "Parametro $_[0]->[$i] (" . $_[2]->{$_[0]->[$i]} . ") es de tipo erroneo, debe ser FLOAT";
-					}
-			} case "BOOLEAN" {
-				if($_[2]->{$_[0]->[$i]} !~ /^(true|TRUE|false|FALSE)$/) {
-						die "Parametro $_[0]->[$i] (" . $_[2]->{$_[0]->[$i]} . ") es de tipo erroneo, debe ser BOOLEAN";
-					}
+			}
+			$types{$key}=$_[0]->{$key};
+		}
+	}
+	return \%types;
+}
+
+=head2 funcion GetVariables
+
+	$_[0] => database connection handler
+	$_[1] => parameters HASH [valid params=  VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER
+	$_[2] => options ARRAY [valod opts -f=[wml,json,fwt,csv]  ]
+
+=cut
+
+sub GetVariables {
+	my %validColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER");
+	#
+	# crea filtro SQL iterando parametros
+	#
+	my $types; 
+	my $filter="";
+	if(defined $_[1]) {
+		if(ref($_[1]) ne "HASH") {
+			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+		}
+		$types=columnTypeCheck(\%validColumns,$_[1],2);
+		foreach my $key (keys %{$_[1]}) {
+			if($types->{$key} eq "STRING") {
+				$filter.= " and \"". $key . "\"='" . $_[1]->{$key} . "'";
 			} else {
-				if(type($_[2]->{$_[0]->[$i]}) ne $_[1]->[$i]) {
-					die "Parametro $_[0]->[$i] (" . $_[2]->{$_[0]->[$i]} . ") es de tipo erroneo, debe ser $_[1]->[$i], pero es " . type($_[2]->{$_[0]->[$i]}) . ".";
-				}
+				$filter.= " and \"". $key . "\"=" . $_[1]->{$key};
 			}
 		}
 	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	my $stmt;
+	my $format = (defined $opts{f}) ? $opts{f} : "wml";
+	switch(lc($format)) {
+		case "wml" {
+			$stmt = "select xmlelement(name \"variablesResponse\",xmlattributes('http://www.cuahsi.org/waterML/1.1/' as \"xmlns:sr\"),xmlelement(name \"queryInfo\",xmlelement(name \"creationTime\",current_timestamp),xmlelement(name \"queryURL\",'$query_string')),xmlelement(name \"variables\", xmlagg(\"VariableInfoXML\"))) from \"VariableInfoXML\" where \"VariableCode\" is not null $filter";
+		} else {
+			die "Formato $format incorrecto. opciones: wml json fwt csv\n";
+		}
+	}
+	my $sth = $_[0]->prepare($stmt);
+	$sth->execute() or die $_[0]->errstr;
+	my @res = $sth->fetchrow_array;
+	if(!defined $res[0]) {
+		err("No se encontraron datos para los parametros especificados");
+	}
+	return "Content-Type: text/xml; charset=utf-8\n\r\n\n$res[0]"; 	
 }
