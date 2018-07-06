@@ -165,6 +165,9 @@ sub columnTypeCheck {
 		{
 			die "Falta $key";
 		}
+		if($_[1]->{$key} =~ /[';]/) {
+			die "Parametro $key (" . $_[1]->{$key} . ") contiene caracteres no admitidos [';]";
+		}
 		elsif (defined $_[1]->{$key}) {
 			switch ($_[0]->{$key}) {
 				case "INTEGER" {
@@ -252,5 +255,6 @@ sub GetVariables {
 	if(!defined $res[0]) {
 		err("No se encontraron datos para los parametros especificados");
 	}
-	return "Content-Type: text/xml; charset=utf-8\n\r\n\n$res[0]"; 	
+	# Content-Type: text/xml; charset=utf-8\n\r\n\n
+	return "$res[0]"; 	
 }
