@@ -40,33 +40,63 @@ my $query_string = (defined $ENV{QUERY_STRING}) ? (defined $ENV{REQUEST_URI}) ? 
 
 =head2 FUNCION dbConnect
 
-	$_[0] => STRING   configuration file location .ini
+	$_[0] => SCALAR   configuration file location .ini 
+	$_[1] => HASH (DBUSER=>username,DBPASSWORD=>pass) (opcional, override conf file)
 
 =cut 
 
 sub dbConnect {
+	my $source;
+	my $user;
+	my $auth;
+	if(ref(\$_[0]) eq "SCALAR") {
 	#
 	#  LEE ARCHIVO DE CONFIGURACION   #
 	#
         my $config_file = $_[0];
         my $cfg = Config::IniFiles->new( -file => $_[0] ) or die "No se encontro el archivo de configuracion $config_file";
         #~ die "Couldn't interpret the configuration file ($config_file) that was given.\nError details follow: $@\n" if $@;
-        if(!defined $cfg->val('all','DBDRIVER')) { die "Falta parametro DB_HOST en archivo de configuracion '$config_file'\n"; }
-        if(!defined $cfg->val('all','DBHOST')) { die "Falta parametro DB_HOST en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val('all','DBDRIVER')) { die "Falta parametro DBDRIVER en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val('all','DBHOST')) { die "Falta parametro DBHOST en archivo de configuracion '$config_file'\n"; }
         my $port = (!defined $cfg->val('all','DBPORT')) ? "" : (":" . $cfg->val('all','DBPORT'));
-        if(!defined $cfg->val('all','DBNAME')) { die "Falta parametro DB_NAME en archivo de configuracion '$config_file'\n"; }
-        if(!defined $cfg->val('all','DBUSER')) { die "Falta parametro DB_USER en archivo de configuracion '$config_file'\n";}
-        my $auth = (!defined $cfg->val('all','DBPASSWORD')) ? "" : $cfg->val('all','DBPASSWORD');
+        if(!defined $cfg->val('all','DBNAME')) { die "Falta parametro DBNAME en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val('all','DBUSER')) { die "Falta parametro DBUSER en archivo de configuracion '$config_file'\n";}
+        $user = $cfg->val('all','DBUSER');
+        $auth = (!defined $cfg->val('all','DBPASSWORD')) ? "" : $cfg->val('all','DBPASSWORD');
+		$source = "dbi:" . $cfg->val('all','DBDRIVER') . ":dbname=" . $cfg->val('all','DBNAME') . $port;
+	}
+	if(defined $_[1]) {
+		if(ref($_[1]) eq "HASH") {
+			if(defined $_[1]->{DBUSER}) {
+				$user = $_[1]->{DBUSER};
+			} elsif (defined $_[1]->{dbuser}) {
+				$user = $_[1]->{dbuser};
+			} elsif (defined $_[1]->{USER}) {
+				$user = $_[1]->{USER};
+			} elsif (defined $_[1]->{user}) {
+				$user = $_[1]->{user};
+			}
+			if(defined $_[1]->{DBPASSWORD}) {
+				$auth = $_[1]->{DBPASSWORD};
+			}elsif(defined $_[1]->{dbpassword}) {
+				$auth = $_[1]->{dbpassword};
+			}elsif(defined $_[1]->{PASSWORD}) {
+				$auth = $_[1]->{PASSWORD};
+			}elsif(defined $_[1]->{password}) {
+				$auth = $_[1]->{password};
+			}
+		} else {
+			print STDERR "parameters element is not a HASH reference\n";
+		}
+	} else {
+		#~ print STDERR "HASH of parameters not defined\n";    #### 	PARA DEBUG
+	} 
 	#
   	# CONECTA CON DATA SOURCE DB #
   	#
-		my $source = "dbi:" . $cfg->val('all','DBDRIVER') . ":dbname=" . $cfg->val('all','DBNAME') . $port;
-		#~ print "DBSOURCE: \"$source\"\n";
-        #~ my $dbh = DBI->connect("dbi:Pg:db=ODM","jbianchi","",{ RaiseError => 1 }) or die $DBI::errstr;
-
-        my $dbh = DBI->connect($source, $cfg->val('all','DBUSER'), $auth, { RaiseError => 1 }) or die $DBI::errstr;
-        #~ print "Conectado a $source\n";
-		return $dbh;
+		#~ print STDERR "DBUSER: $user, DBSOURCE: \"$source\", DBPASSWORD: $auth\n";  ### PARA DEBUG
+    my $dbh = DBI->connect($source, $user, $auth, { RaiseError => 1 }) or die $DBI::errstr;
+	return $dbh;
 }
 
 =head2 FUNCION addVariables
@@ -97,6 +127,9 @@ sub addVariable {
 	#
 	columnTypeCheck(\%requiredColumns,$_[1],1);
 	my %types=columnTypeCheck(\%validColumns,$_[1],2);
+	#~ foreach(keys %types) {       ### PARA DEBUGGING
+		#~ print STDERR "-------types{$_}=".$types{$_}. ".\n"; 
+	#~ }
 	#
 	# CREA SENTENCIA DE INSERCION ITERANDO $_[1] y CHEQUEANDO KEYS Y TIPOS   #
 	#
@@ -115,6 +148,7 @@ sub addVariable {
 			$valstr.= $_[1]->{$key} . ",";
 			$updstr .= $_[1]->{$key} . ",";
 		}
+		#~ print STDERR "TYPECHECK: $key," . $types{$key} . "\n"; ### PARA DEBUGGING
 	}
 	if(!defined $_[1]->{TimeUnitsID}) {
 		$varstr.= "\"TimeUnitsID\""; #chop $varstr;
@@ -129,9 +163,16 @@ sub addVariable {
 	if(defined $opts{"-U"}) {
 		$onConflictAction="do update set $updstr";
 	}
-	my $stmt =qq(insert into "Variables" ($varstr) values ($valstr) on conflict (\"VariableCode\") $onConflictAction);
-	my $rows = $_[0]->do($stmt) or die $_[0]->errstr;
-	return "$rows rows affected";
+	my $stmt =qq(insert into "Variables" ($varstr) values ($valstr) on conflict (\"VariableCode\") $onConflictAction returning "VariableID");
+	#~ print STDERR "$stmt\n"; 
+	my $sth=$_[0]->prepare($stmt);
+	my $rv=$sth->execute or die $_[0]->errstr;
+	my $res = $sth->fetchrow_hashref;   #[0]->do($stmt) or die $_[0]->errstr;
+	if(defined $res->{VariableID}) {
+		return "{\"status\":\"200 OK\",\"VariableID\":" . $res->{VariableID} . "}";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
 	#~ print $stmt . "\n";
 	#~ return 1;
 }
@@ -189,9 +230,10 @@ sub columnTypeCheck {
 				}
 			}
 			$types{$key}=$_[0]->{$key};
+			#~ print STDERR "TYPECHECK.".$_[2].". key:$key, value:".$_[1]->{$key}." type:".$_[0]->{$key}.".\n";
 		}
 	}
-	return \%types;
+	return %types;
 }
 
 =head2 funcion GetVariables
@@ -207,15 +249,15 @@ sub GetVariables {
 	#
 	# crea filtro SQL iterando parametros
 	#
-	my $types; 
+	my %types; 
 	my $filter="";
 	if(defined $_[1]) {
 		if(ref($_[1]) ne "HASH") {
 			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
 		}
-		$types=columnTypeCheck(\%validColumns,$_[1],2);
+		%types=columnTypeCheck(\%validColumns,$_[1],2);
 		foreach my $key (keys %{$_[1]}) {
-			if($types->{$key} eq "STRING") {
+			if($types{$key} eq "STRING") {
 				$filter.= " and \"". $key . "\"='" . $_[1]->{$key} . "'";
 			} else {
 				$filter.= " and \"". $key . "\"=" . $_[1]->{$key};
