@@ -18,9 +18,9 @@ use JSON;
 
 ### OVERALL PARAMETERS #####
 #
-use lib "/home/leyden/lilbambu/lib/perl";   #   <= DIR que contiene módulos perl
+use lib "/usr/lib/perl5";   #   <= DIR que contiene módulos perl
 use odm_load;
-my $lilbambu_conf_file="/home/leyden/lilbambu/config/lilbambu.ini"; # <= archivo de configuración
+my $lilbambu_conf_file="/etc/lilbambu/lilbambu.ini"; # <= archivo de configuración
 
 # FETCH COMMAND LINE ARGUMENTS
 #
@@ -100,9 +100,9 @@ foreach(@validconpars) {
 		delete $pars->{$_};
 	}
 }
-if(keys %conpars <= 0) {
-	print STDERR "Element 'conpars' esta vacio\n";
-}
+#~ if(keys %conpars <= 0) {
+	#~ print STDERR "Element 'conpars' esta vacio\n";
+#~ }
 ### connect to db ###
 #
 my $dbh;
