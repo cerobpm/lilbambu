@@ -11,10 +11,10 @@ use Env;
 #
 ### OVERALL PARAMETERS #####
 #
-use lib "/home/jbianchi/lilbambu/lib/perl";   #   <= DIR que contiene módulos perl
+use lib "/usr/lib/perl5";   #   <= DIR que contiene módulos perl
 #~ use wml;
 use odm_load;
-my $lilbambu_conf_file="/home/jbianchi/lilbambu/config/lilbambu.ini"; # <= archivo de configuración
+my $lilbambu_conf_file="/etc/lilbambu/lilbambu.ini"; # <= archivo de configuración
 
 if(!defined $ARGV[0]) {
 	print "#####   lilbambu.pl version 0.0 ######
@@ -29,7 +29,7 @@ if(!defined $ARGV[0]) {
 #
 ### connect to db ###
 #
-my $dbh=odm_load::dbConnect($lilbambu_conf_file);
+my $dbh=odm_load::dbConnect($lilbambu_conf_file,"master");
 #
 ### shift accion
 #
@@ -86,7 +86,12 @@ switch(lc($accion)) {
 		my $res=odm_load::GetVariables($dbh,$params,$opciones);
 		print "$res\n";
 		exit;
-	} else {
+	} case "addsource" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::addSource($dbh,$params,$opciones);
+		print "$res\n";
+		exit; 
+	}else {
 	die "La funcion $accion no es válida";
 	}
 }

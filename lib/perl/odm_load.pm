@@ -49,6 +49,14 @@ sub dbConnect {
 	my $source;
 	my $user;
 	my $auth;
+	my $section="all";
+	my %validsections=("all",1,"master",1);
+	if(ref(\$_[1]) eq "SCALAR") {
+		if(!defined $validsections{$_[1]}) {
+			die "section de archivo de configuracion erroneo\n";
+		}
+		$section = $_[1];
+	}
 	if(ref(\$_[0]) eq "SCALAR") {
 	#
 	#  LEE ARCHIVO DE CONFIGURACION   #
@@ -56,14 +64,14 @@ sub dbConnect {
         my $config_file = $_[0];
         my $cfg = Config::IniFiles->new( -file => $_[0] ) or die "No se encontro el archivo de configuracion $config_file";
         #~ die "Couldn't interpret the configuration file ($config_file) that was given.\nError details follow: $@\n" if $@;
-        if(!defined $cfg->val('all','DBDRIVER')) { die "Falta parametro DBDRIVER en archivo de configuracion '$config_file'\n"; }
-        if(!defined $cfg->val('all','DBHOST')) { die "Falta parametro DBHOST en archivo de configuracion '$config_file'\n"; }
-        my $port = (!defined $cfg->val('all','DBPORT')) ? "" : (":" . $cfg->val('all','DBPORT'));
-        if(!defined $cfg->val('all','DBNAME')) { die "Falta parametro DBNAME en archivo de configuracion '$config_file'\n"; }
-        if(!defined $cfg->val('all','DBUSER')) { die "Falta parametro DBUSER en archivo de configuracion '$config_file'\n";}
-        $user = $cfg->val('all','DBUSER');
-        $auth = (!defined $cfg->val('all','DBPASSWORD')) ? "" : $cfg->val('all','DBPASSWORD');
-		$source = "dbi:" . $cfg->val('all','DBDRIVER') . ":dbname=" . $cfg->val('all','DBNAME') . $port;
+        if(!defined $cfg->val($section,'DBDRIVER')) { die "Falta parametro DBDRIVER en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val($section,'DBHOST')) { die "Falta parametro DBHOST en archivo de configuracion '$config_file'\n"; }
+        my $port = (!defined $cfg->val($section,'DBPORT')) ? "" : (":" . $cfg->val($section,'DBPORT'));
+        if(!defined $cfg->val($section,'DBNAME')) { die "Falta parametro DBNAME en archivo de configuracion '$config_file'\n"; }
+        if(!defined $cfg->val($section,'DBUSER')) { die "Falta parametro DBUSER en archivo de configuracion '$config_file'\n";}
+        $user = $cfg->val($section,'DBUSER');
+        $auth = (!defined $cfg->val($section,'DBPASSWORD')) ? "" : $cfg->val($section,'DBPASSWORD');
+		$source = "dbi:" . $cfg->val($section,'DBDRIVER') . ":dbname=" . $cfg->val($section,'DBNAME') . $port;
 	}
 	if(defined $_[1]) {
 		if(ref($_[1]) eq "HASH") {
@@ -85,12 +93,14 @@ sub dbConnect {
 			}elsif(defined $_[1]->{password}) {
 				$auth = $_[1]->{password};
 			}
-		} else {
-			print STDERR "parameters element is not a HASH reference\n";
-		}
-	} else {
-		#~ print STDERR "HASH of parameters not defined\n";    #### 	PARA DEBUG
+		} 
+		#~ elsif(ref($_[1]) ne "SCALAR") {
+			#~ print STDERR "parameters element is not a HASH reference or SCALAR\n";
+		#~ }
 	} 
+	#~ else {
+		#~ print STDERR "HASH of parameters not defined\n";    #### 	PARA DEBUG
+	#~ } 
 	#
   	# CONECTA CON DATA SOURCE DB #
   	#
@@ -240,12 +250,12 @@ sub columnTypeCheck {
 
 	$_[0] => database connection handler
 	$_[1] => parameters HASH [valid params=  VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER
-	$_[2] => options ARRAY [valod opts -f=[wml,json,fwt,csv]  ]
+	$_[2] => options ARRAY [valid opts -f=[wml,json,fwt,csv]  ]
 
 =cut
 
 sub GetVariables {
-	my %validColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER");
+	my %validColumns = ("VariableID"=>"INTEGER","VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER");
 	#
 	# crea filtro SQL iterando parametros
 	#
@@ -287,6 +297,7 @@ sub GetVariables {
 	switch(lc($format)) {
 		case "wml" {
 			$stmt = "select xmlelement(name \"variablesResponse\",xmlattributes('http://www.cuahsi.org/waterML/1.1/' as \"xmlns:sr\"),xmlelement(name \"queryInfo\",xmlelement(name \"creationTime\",current_timestamp),xmlelement(name \"queryURL\",'$query_string')),xmlelement(name \"variables\", xmlagg(\"VariableInfoXML\"))) from \"VariableInfoXML\" where \"VariableCode\" is not null $filter";
+			#~ print STDERR "STATEMENT: $stmt\n";
 		} else {
 			die "Formato $format incorrecto. opciones: wml json fwt csv\n";
 		}
@@ -299,4 +310,74 @@ sub GetVariables {
 	}
 	# Content-Type: text/xml; charset=utf-8\n\r\n\n
 	return "$res[0]"; 	
+}
+
+=head2 funcion addSource
+
+	$_[0] => database connection handler
+	$_[1] => parameters HASH [valid params=  "SourceID"=>"INTEGER","Organization"=>"STRING","SourceDescription"=>"STRING","SourceLink"=>"STRING","ContactName"=>"STRING","Phone"=>"STRING", "Email"=>"STRING","Address"=>"STRING","City"=>"STRING","State"=>"STRING","ZipCode"=>"STRING","Citation"=>"STRING","MetadataID"=>"INTEGER"
+	$_[2] => options ARRAY [valid opts -U]  ]
+
+=cut
+
+sub addSource {
+	my %validColumns = ("SourceID"=>"INTEGER","Organization"=>"STRING","SourceDescription"=>"STRING","SourceLink"=>"STRING","ContactName"=>"STRING","Phone"=>"STRING", "Email"=>"STRING","Address"=>"STRING","City"=>"STRING","State"=>"STRING","ZipCode"=>"STRING","Citation"=>"STRING","MetadataID"=>"INTEGER");
+	my %requiredColumns = ("Organization"=>"STRING","SourceDescription"=>"STRING","Citation"=>"STRING");
+	if(!defined $_[1]) {
+		die "Faltan parametros";
+	}
+	if(ref($_[1]) ne 'HASH') {
+		die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts= map { $_ => 1 } @{$_[2]};
+	#
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	my %types=columnTypeCheck(\%validColumns,$_[1],2);
+	#~ foreach(keys %types) {       ### PARA DEBUGGING
+		#~ print STDERR "-------types{$_}=".$types{$_}. ".\n"; 
+	#~ }
+	#
+	# CREA SENTENCIA DE INSERCION ITERANDO $_[1] y CHEQUEANDO KEYS Y TIPOS   #
+	#
+	my $varstr="";
+	my $valstr="";
+	my $updstr="";
+	foreach my $key (keys %{$_[1]}) {
+		#~ my ($index) = grep { $validColumns[$_] eq $key } 0..$#validColumns;
+		$varstr.= "\"" . $key . "\",";
+		$updstr.= "\"" . $key . "\"=";
+		#~ if($ColumnsTypes[$index] eq "STRING") {
+		if($types{$key} eq "STRING") {
+			$valstr.= "'" . $_[1]->{$key} . "',";
+			$updstr .= "'" . $_[1]->{$key} . "',";
+		} else {
+			$valstr.= $_[1]->{$key} . ",";
+			$updstr .= $_[1]->{$key} . ",";
+		}
+		#~ print STDERR "TYPECHECK: $key," . $types{$key} . "\n"; ### PARA DEBUGGING
+	}
+	chop $varstr;
+	chop $valstr;
+	chop $updstr;
+	my $onConflictAction="do nothing";
+	if(defined $opts{"-U"}) {
+		$onConflictAction="do update set $updstr";
+	}
+	my $stmt =qq(insert into "Sources" ($varstr) values ($valstr) on conflict (\"SourceID\") $onConflictAction returning "SourceID");
+	#~ print STDERR "$stmt\n"; 
+	my $sth=$_[0]->prepare($stmt);
+	my $rv=$sth->execute or die $_[0]->errstr;
+	my $res = $sth->fetchrow_hashref;   #[0]->do($stmt) or die $_[0]->errstr;
+	if(defined $res->{SourceID}) {
+		return "{\"status\":\"200 OK\",\"SourceID\":" . $res->{SourceID} . "}";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+	#~ print $stmt . "\n";
+	#~ return 1;
 }
