@@ -15,6 +15,7 @@ use lib "/usr/lib/perl5";   #   <= DIR que contiene módulos perl
 #~ use wml;
 use odm_load;
 my $lilbambu_conf_file="/etc/lilbambu/lilbambu.ini"; # <= archivo de configuración
+my $lilbambu_data_dir="/home/jbianchi/lilbambu/data";
 
 if(!defined $ARGV[0]) {
 	print "#####   lilbambu.pl version 0.0 ######
@@ -91,7 +92,87 @@ switch(lc($accion)) {
 		my $res=odm_load::addSource($dbh,$params,$opciones);
 		print "$res\n";
 		exit; 
-	}else {
+	} case "getsources" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::GetSources($dbh,$params,$opciones);
+		print "$res\n";
+		exit; 
+	} case "makerestrequest" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::makeRestRequest($dbh,$params,$opciones);
+		my %opt= map { $_ => 1;  } @{$opciones};
+		if(defined $opt{"-s"}) {
+			open(my $out,">$lilbambu_data_dir/wml/response.wml") or die "no se pudo abrir $lilbambu_data_dir/wml/response.wml para escritura\n";
+			print $out $res;
+		}else { 
+			print "$res\n";
+		}
+		exit;
+	} case "addsite" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::addSite($dbh,$params,$opciones);
+		print "$res\n";
+		exit;
+	} case "getsites" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::GetSites($dbh,$params,$opciones);
+		print "$res\n";
+		exit;
+	} case "harvestmetadata" {                         ########  NO operativo ###
+		my ($params,$opciones) = getOptions(@ARGV);
+		$params->{RequestName}="GetVariables";
+		my $res=odm_load::makeRestRequest($dbh,$params,$opciones);
+		#~ print "REF:" . ref($res) . "\n";
+		#~ exit;
+		my $variables = $res->findnodes('/variablesResponse/variables/sr:variable');
+		if(!defined $variables) {
+			die "No se encontraron variables en el servidor consultado\n";
+		}
+		#~ if(@$res->{variables} == 0) {
+			#~ die "No se encontraron variables en el servidor consultado\n";
+		#~ }
+		my $i;
+		for($i=0;$i<@$variables;$i++) {
+			my $var = $variables->[$i];
+			#~ print STDERR $var->findnodes('variableCode')->[0]->to_literal() . "\n";
+			#~ next;
+			if($var->findvalue("count(variableCode)")<=0) {
+				print STDERR "Falta variableCode para variable $i\n";
+				next;
+			}
+			if($var->findvalue("count(variableName)")<=0) {
+				print STDERR "Falta  variableName para variable $i\n";
+				next;
+			}
+			if($var->findvalue('count(unit/@unitsID)')<=0) {
+				print STDERR "Falta unit/\@unitsID para variable $i\n";
+				next;
+			}
+			#~ my $VariableID = $var->findnodes('variableCode/@variableID')->[0]; 
+			my %params;
+			$params{VariableName} = $var->findnodes('variableName')->[0]->to_literal();
+			$params{VariableCode} = $params->{Organization} . ":" . $var->findnodes('variableCode')->[0]->to_literal();
+			$params{VariableUnitsID} = $var->findnodes('unit/@unitsID')->[0]->to_literal();
+			$params{ValueType} = ($var->findvalue('count(valueType)')>0) ? $var->findnodes('valueType')->[0]->to_literal() : "Unknown";
+			$params{DataType} = ($var->findvalue('count(dataType)')>0) ? $var->findnodes('dataType')->[0]->to_literal() : "Unknown";
+			$params{GeneralCategory} = ($var->findvalue('count(GeneralCategory)')>0) ? $var->findnodes('GeneralCategory')->[0]->to_literal() : "Unknown";
+			$params{SampleMedium} = ($var->findvalue('count(SampleMedium)')>0) ? $var->findnodes('SampleMedium')->[0]->to_literal() : "Unknown";
+			$params{UnitsName} = ($var->findvalue('count(unit/unitsName)')>0) ? $var->findnodes('unit/unitsName')->[0]->to_literal() : "Unknown";
+			$params{UnitsType} = ($var->findvalue('count(unit/unitsType)')>0) ? $var->findnodes('unit/unitsType')->[0]->to_literal() : "Unknown";
+			$params{UnitsAbbreviation} = ($var->findvalue('count(unit/UnitsAbbreviation)')>0) ? $var->findnodes('unit/UnitsAbbreviation')->[0]->to_literal() : "Unknown";
+			$params{NoDataValue} = ($var->findvalue('count(NoDataValue)')>0) ? $var->findnodes('NoDataValue')->[0]->to_literal() : 0;
+			$params{IsRegular} = ($var->findvalue('count(IsRegular)')>0) ? $var->findnodes('IsRegular')->[0]->to_literal() : "false";
+			$params{TimeUnitsName} = ($var->findvalue('count(TimeUnitsName)')>0) ? $var->findnodes('TimeUnitsName')->[0]->to_literal() : "Unknown";
+			$params{TimeUnitsAbbreviation} = ($var->findvalue('count(TimeUnitsAbbreviation)')>0) ? $var->findnodes('TimeUnitsAbbreviation')->[0]->to_literal() : "Unknown";
+			$params{TimeSupport} = ($var->findvalue('count(TimeSupport)')>0) ? $var->findnodes('TimeSupport')->[0]->to_literal() : 0;
+			$params{Speciation} = ($var->findvalue('count(Speciation)')>0) ? $var->findnodes('Speciation')->[0]->to_literal() : 0;
+			my $res = odm_load::addVariable($dbh,\%params,$opciones);
+			print "$res\n";
+		}
+		print STDERR "Se insertaron $i registros a \"Variables\" (de ". @$variables  . ")\n";
+		exit;
+	
+	} else {
 	die "La funcion $accion no es válida";
 	}
 }

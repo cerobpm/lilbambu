@@ -4,7 +4,7 @@
 
 # PERL
 # export PERL5LIB=$PERL5LIB:/home/jbianchi/lilbambu/lib/perl
-# cpanp -i POSIX utf8 Encode  Getopt::Std Switch Env CGI JSON use CGI Astro::Time  DBI utf8 autobox::universal Config::IniFiles
+# cpanp -i POSIX utf8 Encode  Getopt::Std Switch Env CGI JSON use CGI Astro::Time  DBI utf8 autobox::universal Config::IniFiles HTTP::Request LWP::UserAgent XML::LibXML
 
 #POSTGRESQL
 # sudo su postgres

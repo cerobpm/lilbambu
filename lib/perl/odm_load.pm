@@ -29,6 +29,9 @@ use Switch;
 use autobox::universal qw(type);
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK %EXPORT_TAGS);
 use Config::IniFiles;
+use LWP::UserAgent;
+use HTTP::Request;
+use XML::LibXML;
 
 $VERSION     = 1.00;
 @ISA         = qw(Exporter);
@@ -105,7 +108,14 @@ sub dbConnect {
   	# CONECTA CON DATA SOURCE DB #
   	#
 		#~ print STDERR "DBUSER: $user, DBSOURCE: \"$source\", DBPASSWORD: $auth\n";  ### PARA DEBUG
-    my $dbh = DBI->connect($source, $user, $auth, { RaiseError => 1 }) or die $DBI::errstr;
+    my $dbh = DBI->connect($source, $user, $auth, 
+    { RaiseError => 1,
+		 AutoCommit => 1,
+      PrintError => 1,
+      pg_utf8_strings => 1,
+      }) or die $DBI::errstr;
+	$dbh->{pg_enable_utf8} = 1;
+	$dbh->do("set names 'UTF8'");
 	return $dbh;
 }
 
@@ -226,7 +236,7 @@ sub columnTypeCheck {
 						die "Parametro $key (" . $_[1]->{$key} . ") es de tipo erroneo, debe ser INTEGER";
 					}
 				} case "FLOAT" {
-					if($_[1]->{$key} !~ /^([+-]?)(?=\d&\.\d)\d*(\.\d*)?([Ee]([+-]?\d+))?$/) {
+					if($_[1]->{$key} !~ /^[+-]?\d*(\.\d*)?([Ee]([+-]?\d+))?$/) {
 							die "Parametro $key (" . $_[1]->{$key} . ") es de tipo erroneo, debe ser FLOAT";
 						}
 				} case "BOOLEAN" {
@@ -380,4 +390,307 @@ sub addSource {
 	}
 	#~ print $stmt . "\n";
 	#~ return 1;
+}
+
+=head2 funcion GetSources
+
+=cut
+
+sub GetSources {
+	my %validColumns = ("SourceID"=>"INTEGER","Organization"=>"STRING","SourceDescription"=>"STRING","SourceLink"=>"STRING","ContactName"=>"STRING","Phone"=>"STRING", "Email"=>"STRING","Address"=>"STRING","City"=>"STRING","State"=>"STRING","ZipCode"=>"STRING","Citation"=>"STRING","MetadataID"=>"INTEGER");
+	#
+	# crea filtro SQL iterando parametros
+	#
+	my %types; 
+	my $filter="";
+	if(defined $_[1]) {
+		if(ref($_[1]) ne "HASH") {
+			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+		}
+		%types=columnTypeCheck(\%validColumns,$_[1],2);
+		foreach my $key (keys %{$_[1]}) {
+			if($types{$key} eq "STRING") {
+				$filter.= " and \"Sources\".\"". $key . "\"='" . $_[1]->{$key} . "'";
+			} else {
+				$filter.= " and \"Sources\".\"". $key . "\"=" . $_[1]->{$key};
+			}
+		}
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	my $stmt;
+	my $format = (defined $opts{f}) ? $opts{f} : "wml";
+	switch(lc($format)) {
+		case "wml" {
+			$stmt = "select xmlelement(name \"sourcesResponse\",xmlattributes('http://www.cuahsi.org/waterML/1.1/' as \"xmlns:sr\"),xmlelement(name \"queryInfo\",xmlelement(name \"creationTime\",current_timestamp),xmlelement(name \"queryURL\",'$query_string')),xmlelement(name \"sources\", xmlagg(\"SourceInfoXML\"))) from \"SourceInfoXML\",\"Sources\" where \"SourceInfoXML\".\"SourceID\"=\"Sources\".\"SourceID\" $filter";
+			#~ print STDERR "STATEMENT: $stmt\n";
+		} else {
+			die "Formato $format incorrecto. opciones: wml json fwt csv\n";
+		}
+	}
+	my $sth = $_[0]->prepare($stmt);
+	$sth->execute() or die $_[0]->errstr;
+	my @res = $sth->fetchrow_array;
+	if(!defined $res[0]) {
+		err("No se encontraron datos para los parametros especificados");
+	}
+	# Content-Type: text/xml; charset=utf-8\n\r\n\n
+	return "$res[0]"; 	
+}
+
+=head2 funcion makeRestRequest
+
+=cut
+
+sub makeRestRequest {
+	my %validColumns = ("Organization"=>"STRING","RequestName"=>"STRING","method"=>"STRING");
+	my %requiredColumns = ("Organization"=>"STRING","RequestName"=>"STRING");
+	#
+	# crea filtro SQL iterando parametros
+	#
+	my %types; 
+	my $filter="";
+	if(defined $_[1]) {
+		if(ref($_[1]) ne "HASH") {
+			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+		}
+		%types=columnTypeCheck(\%validColumns,$_[1],2);
+		foreach my $key (keys %{$_[1]}) {
+			if($types{$key} eq "STRING") {
+				$filter.= " and \"Sources\".\"". $key . "\"='" . $_[1]->{$key} . "'";
+			} else {
+				$filter.= " and \"Sources\".\"". $key . "\"=" . $_[1]->{$key};
+			}
+		}
+	} else {
+	 die "Faltan parametros";
+	}
+	my $method = (!defined $_[1]->{method}) ? "GET" : $_[1]->{method}; 
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	
+	#  LEE SourceLink de DB #
+	my $source = GetSourceLink($_[0],$_[1]->{Organization});
+	$source =~ s/\/$//;
+	$source .= "/" . $_[1]->{RequestName};
+	# CONECTA A SOURCELINK
+	#
+	my $request = HTTP::Request->new($method => $source);
+	my $ua = LWP::UserAgent->new;
+	my $response = $ua->request($request);
+	my $code=$response->code;
+	my $desc = HTTP::Status::status_message($code);
+	my $headers=$response->headers_as_string;
+	my $body =  $response->content;
+	#~ return "status code: $code
+#~ status message: $desc
+#~ headers: $headers
+#~ body: $body\n";
+	if($code != 200) {
+		die "{\"code\":$code,\"message\":\"desc\",\"body\":\"$body\"}";
+	}
+	my $data;
+	eval {
+		$data = XML::LibXML->load_xml(string=>$body);
+	} or do {
+		die "No se pudo parsear la respuesta pues no es XML valido\n";
+	};
+	return $data; #->toString();
+}
+		
+
+=head2 funcion GetSourceLink
+
+=cut
+
+sub GetSourceLink {
+	#  LEE SourceLink de DB #
+	my $sth=$_[0]->prepare("select \"SourceLink\" from \"Sources\" where \"Organization\"='" . $_[1] . "' and \"SourceLink\" is not null");
+	$sth->execute();
+	my @res = $sth->fetchrow_array;
+	if(!defined $res[0]) {
+		err("No se encontro SourceLink para Organization=". $_[1]);
+	}
+	return $res[0];
+}
+
+=head2 funcion addSite
+
+=cut
+
+sub addSite {
+	my %validColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT","Elevation"=>"FLOAT","SiteType"=>"STRING","State"=>"STRING","County"=>"STRING","Comments"=>"STRING","Country"=>"STRING");
+	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
+	my %requiredColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT");
+	#~ my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
+	#~ my @requiredColumnsTypes = ("STRING","STRING","INTEGER");
+	if(!defined $_[1]) {
+		die "Faltan parametros";
+	}
+	if(ref($_[1]) ne 'HASH') {
+		die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts= map { $_ => 1 } @{$_[2]};
+	#
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	my %types=columnTypeCheck(\%validColumns,$_[1],2);
+	#~ foreach(keys %types) {       ### PARA DEBUGGING
+		#~ print STDERR "-------types{$_}=".$types{$_}. ".\n"; 
+	#~ }
+	#
+	# CREA SENTENCIA DE INSERCION ITERANDO $_[1] y CHEQUEANDO KEYS Y TIPOS   #
+	#
+	my $varstr="";
+	my $valstr="";
+	my $updstr="";
+	foreach my $key (keys %{$_[1]}) {
+		#~ my ($index) = grep { $validColumns[$_] eq $key } 0..$#validColumns;
+		$varstr.= "\"" . $key . "\",";
+		$updstr.= "\"" . $key . "\"=";
+		#~ if($ColumnsTypes[$index] eq "STRING") {
+		if($types{$key} eq "STRING") {
+			$valstr.= "'" . $_[1]->{$key} . "',";
+			$updstr .= "'" . $_[1]->{$key} . "',";
+		} else {
+			$valstr.= $_[1]->{$key} . ",";
+			$updstr .= $_[1]->{$key} . ",";
+		}
+		#~ print STDERR "TYPECHECK: $key," . $types{$key} . ", value: " . $_[1]->{$key} ."\n"; ### PARA DEBUGGING
+	}
+	chop $varstr;
+	chop $valstr;
+	chop $updstr;
+	my $onConflictAction="do nothing";
+	if(defined $opts{"-U"}) {
+		$onConflictAction="do update set $updstr";
+	}
+	my $stmt =qq(insert into "Sites" ($varstr) values ($valstr) on conflict (\"SiteCode\") $onConflictAction returning "SiteID");
+	#~ my $stmt =qq(select $valstr);
+	#~ print STDERR "$stmt\n"; 
+	my $sth=$_[0]->prepare($stmt);
+	my $rv=$sth->execute or die $_[0]->errstr;
+	my $res = $sth->fetchrow_hashref;   #[0]->do($stmt) or die $_[0]->errstr;
+	#~ my $res = $sth->fetchrow_arrayref;
+	#~ for(my $i=0;$i<@$res;$i++) {
+		#~ print $res->[$i] . ",";
+	#~ }
+	#~ print "\n";
+	#~ exit;
+	if(defined $res->{SiteID}) {
+		return "{\"status\":\"200 OK\",\"SiteID\":" . $res->{SiteID} . "}";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+	#~ print $stmt . "\n";
+	#~ return 1;
+}
+
+
+=head2 funcion GetSites
+
+=cut
+
+sub GetSites {
+	
+	my %validColumns = ("SiteID"=>"INTEGER","SiteCode"=>"STRING","SiteName"=>"STRING","north"=>"FLOAT","south"=>"FLOAT","east"=>"FLOAT","west"=>"FLOAT","SiteType"=>"STRING","State"=>"STRING","County"=>"STRING");
+		# crea filtro SQL iterando parametros #
+	my %types; 
+	my $filter="";
+	if(defined $_[1]) {
+		if(ref($_[1]) ne "HASH") {
+			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+		}
+		%types=columnTypeCheck(\%validColumns,$_[1],2);
+		foreach my $key (keys %{$_[1]}) {
+			if($types{$key} eq "STRING") {
+				$filter.= " and \"Sites\".\"". $key . "\"='" . $_[1]->{$key} . "'";
+			} elsif ($key eq "east") {
+				$filter .= " and \"Sites\".\"Longitude\"<=" . $_[1]->{$key};
+			} elsif ($key eq "north") { 
+				$filter .= " and \"Sites\".\"Latitude\"<=" . $_[1]->{$key};
+			}elsif ($key eq "west") {
+				$filter .= " and \"Sites\".\"Longitude\">=" . $_[1]->{$key};
+			} elsif ($key eq "south") {
+				$filter .= " and \"Sites\".\"Latitude\">=" . $_[1]->{$key};
+			} else {
+				$filter.= " and \"Sites\".\"". $key . "\"=" . $_[1]->{$key};
+			}
+		}
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	my $stmt;
+	my $format = (defined $opts{f}) ? $opts{f} : "wml";
+	switch(lc($format)) {
+		case "wml" {
+			$stmt = "select xmlelement(name \"GetSitesResponse\",xmlattributes('http://www.cuahsi.org/waterML/1.1/' as \"xmlns:sr\", 'http://www.w3.org/2001/XMLSchema-instance' as \"xmlns:xsi\"),xmlagg(\"SiteInfoXML\")) from \"SiteInfoXML\",\"Sites\" where \"Sites\".\"SiteID\"=\"SiteInfoXML\".\"SiteID\" $filter";
+			#~ print STDERR "STATEMENT: $stmt\n";
+		} else {
+			die "Formato $format incorrecto. opciones: wml json fwt csv\n";
+		}
+	}
+	my $sth = $_[0]->prepare($stmt);
+	$sth->execute() or die $_[0]->errstr;
+	my @res = $sth->fetchrow_array;
+	if(!defined $res[0]) {
+		err("No se encontraron datos para los parametros especificados");
+	}
+	# Content-Type: text/xml; charset=utf-8\n\r\n\n
+	return "$res[0]"; 	
 }

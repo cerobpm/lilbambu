@@ -114,7 +114,7 @@ eval {
 };
 #~ $dbh=odm_load::dbConnect($lilbambu_conf_file);
 my @opts;
-my %actions = ( "AddVariables"=> \&odm_load::addVariable,"GetVariables"=>\&odm_load::GetVariables);
+my %actions = ( "AddVariables"=> \&odm_load::addVariable,"GetVariables"=>\&odm_load::GetVariables,"AddSource"=> \&odm_load::addSource, "GetSources"=>\&odm_load::GetSources,"AddSite"=>\&odm_load::addSite,"GetSites",\&odm_load::GetSites);
 
 # fetch request param
 #
