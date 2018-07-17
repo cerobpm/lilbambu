@@ -19,20 +19,17 @@
         <to type="redirect">%{context-path}/rewrite-status</to>
     </rule>
 -->
-<!--
+
        <rule>
-            <condition type="path-info">^/$</condition>
-            <from>^/$</from>
-            <to>/cgi-bin/wml.pl?request=gui</to>
+            <from>^/gui/(.*)$</from>
+            <to>/cgi-bin/gui.pl?op=$1</to>
        </rule>
--->
+
        <rule>
 
             <condition type="query-string">^$</condition>
 
-<!--            <condition type="path-info">^/.+$</condition>   -->
-
-            <from>^/([a-zA-Z]+)$</from>
+            <from>^/ws/([a-zA-Z]+)$</from>
 
             <to>/cgi-bin/json_api.pl?request=$1</to>
 
@@ -42,7 +39,7 @@
 
             <condition type="query-string">.+</condition>
 
-            <from>^/([a-zA-Z]+)\?(.+)$</from>
+            <from>^/ws/([a-zA-Z]+)\?(.+)$</from>
 
             <to>/cgi-bin/json_api.pl?request=$1&amp;$2</to>
 
