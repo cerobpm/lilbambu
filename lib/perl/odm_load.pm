@@ -32,6 +32,7 @@ use Config::IniFiles;
 use LWP::UserAgent;
 use HTTP::Request;
 use XML::LibXML;
+use JSON;
 
 $VERSION     = 1.00;
 @ISA         = qw(Exporter);
@@ -694,3 +695,93 @@ sub GetSites {
 	# Content-Type: text/xml; charset=utf-8\n\r\n\n
 	return "$res[0]"; 	
 }
+
+=head2 funcion addSite
+
+=cut
+
+sub addValues {
+	my %validColumns = ("Values"=>"ARRAY","SiteID"=>"INTEGER","VariableID"=>"INTEGER","MethodID"=>"INTEGER","SourceID"=>"INTEGER","QualityControl"=>"INTEGER","UTCOffset"=>"INTEGER");
+	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
+	my %requiredColumns = ("Values"=>"ARRAY","SiteID"=>"INTEGER","VariableID"=>"INTEGER","SourceID"=>"INTEGER");
+	#~ my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
+	#~ my @requiredColumnsTypes = ("STRING","STRING","INTEGER");
+	if(!defined $_[1]) {
+		die "Faltan parametros";
+	}
+	if(ref($_[1]) ne 'HASH') {
+		die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts= map { $_ => 1 } @{$_[2]};
+	#
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	my %types=columnTypeCheck(\%validColumns,$_[1],2);
+	#~ foreach(keys %types) {       ### PARA DEBUGGING
+		#~ print STDERR "-------types{$_}=".$types{$_}. ".\n"; 
+	#~ }
+	$_[1]->{UTCOffset} = (!defined $_[1]->{UTCOffset}) ? -3 : $_[1]->{UTCOffset};
+	#
+	# CREA SENTENCIA DE INSERCION ITERANDO $_[1] y CHEQUEANDO KEYS Y TIPOS   #
+	#
+	my $varstr="";
+	my $fixedvalstr="";
+	my $valstr="";
+	#~ my $fixedupdstr="";
+	#~ my $updstr="";
+	my @values = @{$_[1]->{Values}};
+	if(@values<=0) {
+		die "El elemento Values está vacío";
+	}
+	delete $_[1]->{Values};
+	foreach my $key (keys %{$_[1]}) {
+		#~ my ($index) = grep { $validColumns[$_] eq $key } 0..$#validColumns;
+		$varstr.= "\"" . $key . "\",";
+		#~ $updstr.= "\"" . $key . "\"=";
+		#~ if($ColumnsTypes[$index] eq "STRING") {
+		if($types{$key} eq "STRING") {
+			$fixedvalstr.= "'" . $_[1]->{$key} . "',";
+			#~ $updstr .= "'" . $_[1]->{$key} . "',";
+		} else {
+			$fixedvalstr.= $_[1]->{$key} . ",";
+			#~ $updstr .= $_[1]->{$key} . ",";
+		}
+		#~ print STDERR "TYPECHECK: $key," . $types{$key} . ", value: " . $_[1]->{$key} ."\n"; ### PARA DEBUGGING
+	}
+	$varstr .= "\"LocalDateTime\",\"DateTimeUTC\",\"DataValue\"";
+	foreach my $reg (@values) {
+		if(@$reg < 2) {
+			die "elemento Values incorrecto. Debe ser una matriz de N x 2";
+		}
+		$valstr .= "($fixedvalstr '" . $reg->[0] . "'::timestamp+'" . $_[1]->{UTCOffset} . " hours'::interval, '" . $reg->[0] . "'::timestamp, " . $reg->[1] . "),";
+	}
+	#~ chop $varstr;
+	chop $valstr;
+	#~ chop $updstr;
+	#~ my $onConflictAction="do nothing";
+	#~ if(defined $opts{"-U"}) {
+		#~ $onConflictAction="do update set $updstr";
+	#~ }
+	my $stmt =qq(insert into "DataValues" ($varstr) values $valstr returning "ValueID");
+	#~ my $stmt =qq(select $valstr);
+	#~ print STDERR "$stmt\n"; exit;
+	my $sth=$_[0]->prepare($stmt);
+	my $rv=$sth->execute or die $_[0]->errstr;
+	my @res;
+	while(my $row=$sth->fetchrow_hashref) {
+		push @res, $row->{ValueID};
+	}
+	my $res = encode_json \@res;
+	if(@res > 0) {
+		return "{\"status\":\"200 OK\",\"SiteID\":" . $res . "}";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+	#~ print $stmt . "\n";
+	#~ return 1;
+}
+

@@ -6,6 +6,7 @@ use utf8;
 use Encode;
 use Getopt::Std;
 use Switch;
+use JSON;
 binmode(STDOUT, ":utf8");
 use Env;
 #
@@ -15,7 +16,7 @@ use lib "/usr/lib/perl5";   #   <= DIR que contiene módulos perl
 #~ use wml;
 use odm_load;
 my $lilbambu_conf_file="/etc/lilbambu/lilbambu.ini"; # <= archivo de configuración
-my $lilbambu_data_dir="/home/jbianchi/lilbambu/data";
+my $lilbambu_data_dir="/home/leyden/lilbambu/data";
 
 if(!defined $ARGV[0]) {
 	print "#####   lilbambu.pl version 0.0 ######
@@ -118,7 +119,12 @@ switch(lc($accion)) {
 		my $res=odm_load::GetSites($dbh,$params,$opciones);
 		print "$res\n";
 		exit;
-	} case "harvestmetadata" {                         ########  NO operativo ###
+	} case "addvalues" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::addValues($dbh,$params,$opciones);
+		print "$res\n";
+		exit; 
+	}case "harvestmetadata" {                         ########  NO operativo ###
 		my ($params,$opciones) = getOptions(@ARGV);
 		$params->{RequestName}="GetVariables";
 		my $res=odm_load::makeRestRequest($dbh,$params,$opciones);
@@ -189,7 +195,14 @@ sub getOptions {
 			#~ }
 			#~ print "opcion:$opt\n";
 			push @opciones, $opt;
-		}elsif ($opt =~ /(^.+)=(.+$)/) {
+		} elsif ($opt =~ /(^.+)=@(.+$)/) {
+			open(my $file,$2) or die "Archivo $2 no encontrado";
+			eval {
+				$params{$1} = decode_json <$file>;
+			} or do {
+				die "El archivo $2 no es un JSON válido";
+			};
+		} elsif ($opt =~ /(^.+)=(.+$)/) {
             $params{$1} = $2;
         } else {
             $params{$opt} = 1;
