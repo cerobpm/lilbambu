@@ -316,11 +316,11 @@ sub GetVariables {
 	my $sth = $_[0]->prepare($stmt);
 	$sth->execute() or die $_[0]->errstr;
 	my @res = $sth->fetchrow_array;
-	if(!defined $res[0]) {
-		err("No se encontraron datos para los parametros especificados");
+	if(defined $res[0]) {
+		return "$res[0]";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
 	}
-	# Content-Type: text/xml; charset=utf-8\n\r\n\n
-	return "$res[0]"; 	
 }
 
 =head2 funcion addSource
@@ -448,11 +448,11 @@ sub GetSources {
 	my $sth = $_[0]->prepare($stmt);
 	$sth->execute() or die $_[0]->errstr;
 	my @res = $sth->fetchrow_array;
-	if(!defined $res[0]) {
-		err("No se encontraron datos para los parametros especificados");
+	if(defined $res[0]) {
+		return "$res[0]";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
 	}
-	# Content-Type: text/xml; charset=utf-8\n\r\n\n
-	return "$res[0]"; 	
 }
 
 =head2 funcion makeRestRequest
@@ -689,14 +689,77 @@ sub GetSites {
 	my $sth = $_[0]->prepare($stmt);
 	$sth->execute() or die $_[0]->errstr;
 	my @res = $sth->fetchrow_array;
-	if(!defined $res[0]) {
-		err("No se encontraron datos para los parametros especificados");
+	if(defined $res[0]) {
+		return "$res[0]";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
 	}
 	# Content-Type: text/xml; charset=utf-8\n\r\n\n
-	return "$res[0]"; 	
+	#~ return "$res[0]"; 	
 }
 
-=head2 funcion addSite
+=head2 funcion GetSiteInfo
+
+=cut
+
+sub GetSiteInfo {
+	
+	my %validColumns = ("SiteCode"=>"STRING");
+	my %requiredColumns = ("SiteCode"=>"STRING");
+		# crea filtro SQL iterando parametros #
+	my %types; 
+	my $filter="";
+	if(defined $_[1]) {
+		if(ref($_[1]) ne "HASH") {
+			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+		}
+	} else {
+		die "";
+	}
+	#
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	%types=columnTypeCheck(\%validColumns,$_[1],2);
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	my $stmt;
+	my $format = (defined $opts{f}) ? $opts{f} : "wml";
+	switch(lc($format)) {
+		case "wml" {
+			$stmt = "select xmlelement(name \"GetSiteInfoResponse\",xmlattributes('http://www.cuahsi.org/waterML/1.1/' as \"xmlns:sr\", 'http://www.w3.org/2001/XMLSchema-instance' as \"xmlns:xsi\"),\"SitesWithSeriesCatalogXML\".site) from \"SitesWithSeriesCatalogXML\",\"Sites\" where \"Sites\".\"SiteID\"=\"SitesWithSeriesCatalogXML\".\"SiteID\" and \"Sites\".\"SiteCode\"='" . $_[1]->{SiteCode} . "'";
+			#~ print STDERR "STATEMENT: $stmt\n";
+		} else {
+			die "Formato $format incorrecto. opciones: wml json fwt csv\n";
+		}
+	}
+	my $sth = $_[0]->prepare($stmt);
+	$sth->execute() or die $_[0]->errstr;
+	my @res = $sth->fetchrow_array;
+	if(defined $res[0]) {
+		return "$res[0]";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+}
+
+=head2 funcion addValues
 
 =cut
 
@@ -766,7 +829,7 @@ sub addValues {
 	#~ if(defined $opts{"-U"}) {
 		#~ $onConflictAction="do update set $updstr";
 	#~ }
-	my $stmt =qq(insert into "DataValues" ($varstr) values $valstr returning "ValueID");
+	my $stmt =qq(insert into "DataValues" ($varstr) values $valstr on conflict do nothing returning "ValueID");
 	#~ my $stmt =qq(select $valstr);
 	#~ print STDERR "$stmt\n"; exit;
 	my $sth=$_[0]->prepare($stmt);
@@ -785,3 +848,127 @@ sub addValues {
 	#~ return 1;
 }
 
+=head2 funcion GetValues
+
+=cut
+
+sub GetValues {
+	
+	my %validColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING","StartDate"=>"STRING","EndDate"=>"STRING");
+	my %requiredColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING","StartDate"=>"STRING","EndDate"=>"STRING");
+		# crea filtro SQL iterando parametros #
+	my %types; 
+	my $filter="";
+	if(defined $_[1]) {
+		if(ref($_[1]) ne "HASH") {
+			die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+		}
+		%types=columnTypeCheck(\%validColumns,$_[1],2);
+		foreach my $key (keys %{$_[1]}) {
+			switch($key) {
+				case "site" {
+					$_[1]->{SiteCode} = $_[1]->{$key};
+					delete $_[1]->{$key};
+				} case "variable" {
+					$_[1]->{VariableCode} = $_[1]->{$key};
+					delete $_[1]->{$key};
+				} case "startDate" {
+					$_[1]->{StartDate} = $_[1]->{$key};
+					delete $_[1]->{$key};
+				} case "endDate" {
+					$_[1]->{EndDate} = $_[1]->{$key};
+					delete $_[1]->{$key};
+				} 
+			}
+		}
+	}
+	#
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	%types=columnTypeCheck(\%validColumns,$_[1],2);
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	my $stmt;
+	my $format = (defined $opts{f}) ? $opts{f} : "wml";
+	switch(lc($format)) {
+		case "wml" {
+			$stmt = "with a as (
+   select 
+    xmlelement(name \"queryInfo\",
+                xmlelement(name \"creationTime\",current_timestamp),
+                xmlelement(name \"queryURL\",'$query_string'),
+                xmlelement(name \"criteria\",
+                   xmlattributes('getValues' as \"methodCalled\"),
+                   xmlelement(name \"locationParam\",'" . $_[1]->{SiteCode} . "'),
+                   xmlelement(name \"variableParam\",'" . $_[1]->{VariableCode} . "'),
+                   xmlelement(name \"timeParam\",
+                       xmlelement(name \"beginDateTime\",'" . $_[1]->{StartDate} . "'),
+                       xmlelement(name \"endDateTime\",'" . $_[1]->{EndDate} . "')
+                       )
+                   )
+               ) as query_info,
+      \"SiteInfoXML\".\"SiteInfoXML\" as site_info,
+      \"VariableInfoXML\".\"VariableInfoXML\" as variable
+    from \"Sites\",\"Variables\",\"SiteInfoXML\",\"VariableInfoXML\"
+    where \"Sites\".\"SiteID\"=\"SiteInfoXML\".\"SiteID\"
+    and \"Sites\".\"SiteCode\"='" . $_[1]->{SiteCode} . "'
+    and \"Variables\".\"VariableID\"=\"VariableInfoXML\".\"VariableID\"
+    and \"Variables\".\"VariableCode\"='" . $_[1]->{VariableCode} . "'
+     limit 1
+    ),
+  b as (
+   select min(\"UnitsID\") unit_id,
+          xmlagg(\"ValueXML\") as values
+   from (select \"Units\".\"UnitsID\",
+                \"ValueXML\" 
+         from \"Units\",\"ValuesXML\",\"DataValues\",\"UnitsXML\",\"Variables\",\"Sites\"
+         where \"Sites\".\"SiteCode\"='" . $_[1]->{SiteCode} . "' 
+         and \"Variables\".\"VariableCode\"='" . $_[1]->{VariableCode} . "' 
+         and \"DataValues\".\"LocalDateTime\">='" . $_[1]->{StartDate} . "'
+         and \"DataValues\".\"LocalDateTime\"<='" . $_[1]->{EndDate} ."'
+         and \"DataValues\".\"ValueID\"=\"ValuesXML\".\"ValueID\" 
+         and \"Units\".\"UnitsID\"=\"UnitsXML\".\"UnitsID\"
+         and \"Units\".\"UnitsID\"=\"Variables\".\"VariableUnitsID\"
+         and \"Variables\".\"VariableID\"=\"DataValues\".\"VariableID\"
+         and \"Sites\".\"SiteID\"=\"DataValues\".\"SiteID\"
+         ) values_xml 
+    )
+select xmlelement(name \"GetValuesResponse\",
+                  xmlattributes('http://www.cuahsi.org/waterML/1.1/' as \"xmlns:sr\", 'http://www.w3.org/2001/XMLSchema-instance' as \"xmlns:xsi\"),
+                  a.query_info,
+                  xmlelement(name \"sr:timeSeries\",a.site_info,a.variable,xmlelement(name values,coalesce(b.values,''),coalesce(\"UnitsXML\".\"UnitsXML\",'')))
+                  )
+  from a 
+       left join b on (a.query_info is not null) 
+       left join \"UnitsXML\" on (b.unit_id=\"UnitsXML\".\"UnitsID\")";
+			#~ print STDERR "STATEMENT: $stmt\n";
+		} else {
+			die "Formato $format incorrecto. opciones: wml json fwt csv\n";
+		}
+	}
+	my $sth = $_[0]->prepare($stmt);
+	$sth->execute() or die $_[0]->errstr;
+	my @res = $sth->fetchrow_array;
+	if(defined $res[0]) {
+		return "$res[0]";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+}

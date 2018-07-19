@@ -119,9 +119,19 @@ switch(lc($accion)) {
 		my $res=odm_load::GetSites($dbh,$params,$opciones);
 		print "$res\n";
 		exit;
+	} case "getsiteinfo" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::GetSiteInfo($dbh,$params,$opciones);
+		print "$res\n";
+		exit;
 	} case "addvalues" {
 		my ($params,$opciones) = getOptions(@ARGV);
 		my $res=odm_load::addValues($dbh,$params,$opciones);
+		print "$res\n";
+		exit; 
+	} case "getvalues" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::GetValues($dbh,$params,$opciones);
 		print "$res\n";
 		exit; 
 	}case "harvestmetadata" {                         ########  NO operativo ###
