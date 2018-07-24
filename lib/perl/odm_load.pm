@@ -137,7 +137,7 @@ sub dbConnect {
 =cut
 
 sub addVariable {
-	my %validColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER");
+	my %validColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER","NoDataValue"=>"FLOAT");
 	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
 	my %requiredColumns = ("VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER");
 	#~ my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
@@ -279,7 +279,7 @@ sub columnTypeCheck {
 
 =head3 returns
 
-	VariablesResponse STRING in requested format (wml,sjon,fwt,csv) o {"status":"400 Bad Request"}
+	VariablesResponse STRING in requested format (wml,json,fwt,csv) o {"status":"400 Bad Request"}
 
 =cut
 
@@ -1062,5 +1062,137 @@ select xmlelement(name \"GetValuesResponse\",
 		return "$res[0]";
 	} else {
 		return "{\"status\":\"400 Bad Request\"}";
+	}
+}
+
+=head2 funcion parseWML()
+
+	$_[0] => database connection handler
+	$_[1] => parameters  input=WMLSTRING* o file=FILENAME* , source=STRING* 
+	$_[2] => options ARRAY [valid opts -f]  ]
+	
+=head3 returns
+
+ 	200 Ok or 400 Bad Request ; STRING in required format  si se indica -f wml,json,fwt,csv
+=cut
+
+sub parseWML
+{
+	my $str;
+	if(ref($_[1]) ne "HASH") {
+		die "\$_[1] debe ser un HASH\n";
+	}
+	if(defined $_[1]->{input}) {
+		$str=$_[1]->{input};
+	} elsif(defined $_[1]->{file}) {
+		open(my $file,$_[1]->{file}) or die "No se pudo abrir el archivo " . $_[1]->{file} . " para lectura\n";
+		while(<$file>) 
+		{
+			$str .= $_;
+		}
+	} else {
+		die "Falta parametro input o file\n";
+	}
+	if(!defined $_[1]->{source}) {
+		die "Falta parametro source\n";
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts;
+	if(defined $_[2]) {
+		if(ref($_[2]) ne "ARRAY") {
+			die "\$_[2] debe ser ARRAY ref, pero es" . ref($_[2]) . ".";
+		}
+		foreach(@$_[2]) {
+			$_ =~ s/^-+//g;
+			if($_ =~ /^(\.+)=(\.+)$/) {
+				$opts{$1}=$2;
+			} else {
+				$opts{$_}=1;
+			}
+		}
+		#~ %opts= map { $_ => 1 } @{$_[2]};
+	}
+	#~ print STDERR $str . "\n";
+	my $data;
+	eval {
+		$data = XML::LibXML->load_xml(string=>$str);
+	} or do {
+		die "No se pudo parsear la respuesta pues no es XML valido\n";
+	};
+	my $format = (defined $opts{f}) ? $opts{f} : "pg";
+	if($data->exists('//variables')) {
+		my $allres = "";
+		#~ print STDERR "variables Exists\n";
+		my @variables = $data->find('//variables')->[0]->childNodes();
+		#~ if(@variables > 0) {
+		my $n=0;
+		foreach my $var (@variables) {
+			my $literal = $var->to_literal;
+			print STDERR "varnum:$n,literal:$literal\n";
+			my %params;
+			my %validColumns = ("variableCode"=>"STRING","variableName"=>"STRING","variableDescription"=>"STRING", "unitsName"=>"STRING", "unitsType"=>"STRING","sampleMedium"=>"STRING","valueType"=>"STRING","isRegular"=>"BOOLEAN","dataType"=>"STRING", "generalCategory"=>"STRING","timeSupport"=>"INTEGER","timeUnitsID"=>"INTEGER");
+			foreach my $key (keys %validColumns) {
+				my $xpath=($key =~ /units/) ? ( "./unit/" . $key . "[1]" ) : "./" . $key . "[1]";
+				if($var->exists($xpath)) {
+					my $node = $var->findnodes($xpath)->[0];
+					my $val = $node->textContent;
+					$params{$key} = ($key eq "variableCode") ? $_[1]->{source} . ":" .  $val : $val;
+					#~ print STDERR "varnum:$n;key:$key, val:$val\n";
+				}
+			}
+			if($format eq "pg") {
+				if(defined $params{variableCode} and defined $params{variableName} and defined $params{unitsName} and defined  $params{unitsType}) { 
+					my %upperparams = map { ucfirst($_) => $params{$_} } keys %params;
+					my $UnitsID = odm_load::GetUnitsID($_[0],\%upperparams);
+					#~ print STDERR "unitsID:$UnitsID, variableName:" . $upperparams{VariableName} . "\n";
+					#~ next;
+					$upperparams{VariableUnitsID}=$UnitsID;
+					delete $upperparams{UnitsName};
+					delete $upperparams{UnitsType};
+					delete $upperparams{VariableDescription};
+					my @opts=("-U");
+					my $res = odm_load::addVariable($_[0],\%upperparams,\@opts);
+					$allres .= $res;
+				}
+			}
+			$n++;
+		}
+		if($allres eq "") { 
+			print STDERR "No se encontraron registros\n";
+			return 1;
+		} else {
+			return $allres . "\n";
+		} 
+	}
+}
+
+=head2 funcion GetUnitsID()
+
+	$_[0] => database connection handler
+	$_[1] => parameters  UnitsName=STRING* UnitsType=STRING* 
+	
+=head3 returns
+
+ 	UnitsID INTEGER   or 349
+
+=cut
+
+sub GetUnitsID
+{
+	if(ref($_[1]) ne "HASH") {
+		die "\$_[1] debe ser un HASH\n";
+	}
+	if(!defined $_[1]->{UnitsName} or !defined $_[1]->{UnitsType}) {
+		die "Falte UnitsName o UnitsType\n";
+	}
+	my $sth = $_[0]->prepare(qq(select "UnitsID" from "Units" where "UnitsName"=') . $_[1]->{UnitsName} . qq(' and "UnitsType"=') . $_[1]->{UnitsType} . qq(' limit 1));
+	$sth->execute() or die $_[0]->errstr;
+	my @res = $sth->fetchrow_array;
+	if(defined $res[0]) {
+		return $res[0];
+	} else {
+		return 349;
 	}
 }

@@ -188,7 +188,17 @@ switch(lc($accion)) {
 		print STDERR "Se insertaron $i registros a \"Variables\" (de ". @$variables  . ")\n";
 		exit;
 	
-	} else {
+	} case "parsewml" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::parseWML($dbh,$params,$opciones);
+		print "$res\n";
+		exit; 
+	} case "getunitsid" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::GetUnitsID($dbh,$params);
+		print "$res\n";
+		exit; 
+	}else {
 	die "La funcion $accion no es válida";
 	}
 }
