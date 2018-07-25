@@ -200,7 +200,7 @@ switch(lc($accion)) {
 		exit; 
 	}  case "addseries" {
 		my ($params,$opciones) = getOptions(@ARGV);
-		my $res=odm_load::addSeries($dbh,$params);
+		my $res=odm_load::addSeries($dbh,$params,$opciones);
 		print "$res\n";
 		exit; 
 	} else {

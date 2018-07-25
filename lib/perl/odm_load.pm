@@ -1235,16 +1235,15 @@ sub addSeries {
 	my $varstr="\"SiteCode\",\"SiteID\",\"SiteName\",\"SiteType\",\"VariableCode\",\"VariableID\",\"VariableName\",\"Speciation\",\"VariableUnitsID\",\"VariableUnitsName\",\"SampleMedium\",\"ValueType\",\"TimeSupport\",\"TimeUnitsID\",\"TimeUnitsName\",\"DataType\",\"GeneralCategory\",";
 	my $valstr="'$_[1]->{SiteCode}',\"Sites\".\"SiteID\",\"Sites\".\"SiteName\",\"Sites\".\"SiteType\",'$_[1]->{VariableCode}',\"Variables\".\"VariableID\",\"Variables\".\"VariableName\",\"Variables\".\"Speciation\",\"Variables\".\"VariableUnitsID\",\"Units\".\"UnitsName\",\"Variables\".\"SampleMedium\",\"Variables\".\"ValueType\",\"Variables\".\"TimeSupport\",\"Variables\".\"TimeUnitsID\",timeunits.\"UnitsName\",\"Variables\".\"DataType\",\"Variables\".\"GeneralCategory\",";
 	my $updstr="";
-	foreach my $key ("valueCount","beginDateTime","endDateTime","beginDateTimeUTC","endDateTimeUTC") {
+	foreach my $key ("ValueCount","BeginDateTime","EndDateTime","BeginDateTimeUTC","EndDateTimeUTC") {
 		if(defined $_[1]->{$key}) {
-			my $colname=uc_first($key);
-			$varstr.="\"$colname\",";
+			$varstr.="\"$key\",";
 			if($validColumns{$key} eq "STRING") {
 				$valstr.="'$_[1]->{$key}',";
-				$updstr.="\"$colname\"='$_[1]->{$key}',";
+				$updstr.="\"$key\"='$_[1]->{$key}',";
 			} else {
 				$valstr .="$_[1]->{$key},";
-				$updstr.="\"$colname\"=$_[1]->{$key},";
+				$updstr.="\"$key\"=$_[1]->{$key},";
 			}
 		}
 	}
@@ -1342,6 +1341,7 @@ sub addSeries {
 	chop $varstr;
 	chop $valstr;
 	chop $updstr;
+	# ON CONFLICT CLAUSE #
 	my $onConflictAction="do nothing";
 	if(defined $opts{"-U"}) {
 		$onConflictAction="do update set $updstr";
