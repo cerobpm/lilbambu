@@ -198,7 +198,12 @@ switch(lc($accion)) {
 		my $res=odm_load::GetUnitsID($dbh,$params);
 		print "$res\n";
 		exit; 
-	}else {
+	}  case "addseries" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		my $res=odm_load::addSeries($dbh,$params);
+		print "$res\n";
+		exit; 
+	} else {
 	die "La funcion $accion no es válida";
 	}
 }

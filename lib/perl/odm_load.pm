@@ -610,7 +610,7 @@ sub GetSourceLink {
 =cut
 
 sub addSite {
-	my %validColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT","Elevation"=>"FLOAT","SiteType"=>"STRING","State"=>"STRING","County"=>"STRING","Comments"=>"STRING","Country"=>"STRING");
+	my %validColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT","Elevation_m"=>"FLOAT","SiteType"=>"STRING","State"=>"STRING","County"=>"STRING","Comments"=>"STRING","Country"=>"STRING");
 	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
 	my %requiredColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT");
 	#~ my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
@@ -1195,4 +1195,173 @@ sub GetUnitsID
 	} else {
 		return 349;
 	}
+}
+
+
+=head2 funcion addSeries()
+
+
+	$_[0] => database connection handler
+	$_[1] => parameters HASH [valid params=  "SiteCode"=>"STRING"*,"VariableCode"=>"STRING"*,"MethodCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","citation"=>"STRING","qualityControlLevelCode"=>"STRING","qualityControlLevelDefinition"=>"STRING","valueCount"=>"INTEGER","beginDateTime"=>"STRING","endDateTime"=>"STRING","beginDateTimeUTC"=>"STRING","endDateTimeUTC"=>"STRING"       *:required
+	$_[2] => options ARRAY [valid opts -U]  ]
+	
+=head3 returns
+
+ 	{"status":"200 OK","SiteID":"$inserted_series_id"} o {"status":"400 Bad Request"}
+
+=cut
+
+sub addSeries {
+	my %validColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING","MethodCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","Citation"=>"STRING","QualityControlLevelCode"=>"STRING","QualityControlLevelDefinition"=>"STRING","ValueCount"=>"INTEGER","BeginDateTime"=>"STRING","EndDateTime"=>"STRING","BeginDateTimeUTC"=>"STRING","EndDateTimeUTC"=>"STRING");
+	my %requiredColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING");
+	if(!defined $_[1]) {
+		die "Faltan parametros";
+	}
+	if(ref($_[1]) ne 'HASH') {
+		die "\$_[1] debe ser HASHREF, pero es" . ref($_[1]) . ".";
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts= map { $_ => 1 } @{$_[2]};
+	#
+	#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+	#
+	columnTypeCheck(\%requiredColumns,$_[1],1);
+	my %types=columnTypeCheck(\%validColumns,$_[1],2);
+	#
+	# CREA SENTENCIA DE INSERCion   #
+	#
+	my $varstr="\"SiteCode\",\"SiteID\",\"SiteName\",\"SiteType\",\"VariableCode\",\"VariableID\",\"VariableName\",\"Speciation\",\"VariableUnitsID\",\"VariableUnitsName\",\"SampleMedium\",\"ValueType\",\"TimeSupport\",\"TimeUnitsID\",\"TimeUnitsName\",\"DataType\",\"GeneralCategory\",";
+	my $valstr="'$_[1]->{SiteCode}',\"Sites\".\"SiteID\",\"Sites\".\"SiteName\",\"Sites\".\"SiteType\",'$_[1]->{VariableCode}',\"Variables\".\"VariableID\",\"Variables\".\"VariableName\",\"Variables\".\"Speciation\",\"Variables\".\"VariableUnitsID\",\"Units\".\"UnitsName\",\"Variables\".\"SampleMedium\",\"Variables\".\"ValueType\",\"Variables\".\"TimeSupport\",\"Variables\".\"TimeUnitsID\",timeunits.\"UnitsName\",\"Variables\".\"DataType\",\"Variables\".\"GeneralCategory\",";
+	my $updstr="";
+	foreach my $key ("valueCount","beginDateTime","endDateTime","beginDateTimeUTC","endDateTimeUTC") {
+		if(defined $_[1]->{$key}) {
+			my $colname=uc_first($key);
+			$varstr.="\"$colname\",";
+			if($validColumns{$key} eq "STRING") {
+				$valstr.="'$_[1]->{$key}',";
+				$updstr.="\"$colname\"='$_[1]->{$key}',";
+			} else {
+				$valstr .="$_[1]->{$key},";
+				$updstr.="\"$colname\"=$_[1]->{$key},";
+			}
+		}
+	}
+	#
+	#  BUSCA MethodID e inserta registro si no existe
+	my ($MethodID,$MethodDescription,$MethodLink,$MethodCode);
+	if(defined $_[1]->{MethodCode}) {
+		my $filter = (defined $_[1]->{MethodDescription}) ? (" and \"MethodDescription\"='" . $_[1]->{MethodDescription} . "'") : "";
+		$filter .= (defined $_[1]->{MethodLink}) ? (" and \"MethodLink\"='" . $_[1]->{MethodLink} . "'") : "";
+		my $sth=$_[0]->prepare(qq(select "MethodCode","MethodID","MethodDescription","MethodLink" from "Methods" where "MethodCode"=') .  $_[1]->{MethodCode} . "'" . $filter);
+		my $rv=$sth->execute or die $_[0]->errstr;
+		my $res = $sth->fetchrow_hashref;
+		if(defined $res->{MethodID}) {
+			$MethodCode=$res->{MethodCode};
+			$MethodID=$res->{MethodID};
+			$MethodDescription = $res->{MethodDescription};
+			$MethodLink = $res->{MethodLink};
+		} else {
+			$MethodCode=$_[1]->{MethodCode};
+			$MethodDescription = (defined $_[1]->{MethodDescription}) ? $_[1]->{MethodDescription} : "No description";
+			$MethodLink = (defined $_[1]->{MethodLink}) ? $_[1]->{MethodLink}  : "";
+			$sth=$_[0]->prepare(qq(insert into "Methods" ("MethodCode","MethodDescription","MethodLink") values ('$MethodCode','$MethodDescription','$MethodLink') returning "MethodID"));
+			$rv=$sth->execute or die $_[0]->errstr;
+			my $res=$sth->fetchrow_hashref;
+			if(defined $res->{MethodID}) {
+				$MethodID=$res->{MethodID};
+			} else {
+				die "Error al insertar Method";
+			}
+		}
+		$varstr.="\"MethodID\",\"MethodDescription\",";
+		$valstr.="$MethodID,'$MethodDescription',";
+		$updstr.="\"MethodID\"=$MethodID,\"MethodDescription\"='$MethodDescription',";
+	}
+	#
+	# Busca SourceID e inserta registro si no existe
+	my ($SourceID,$Organization,$SourceDescription,$citation);
+	if(defined $_[1]->{Organization}) {
+		my $filter = (defined $_[1]->{SourceDescription}) ? " and \"SourceDescription\"='" . $_[1]->{SourceDescription} . "'" : ""; 
+		my $sth=$_[0]->prepare(qq(select "SourceID","Organization","SourceDescription","Citation" from "Sources" where "Organization"=') .  $_[1]->{Organization} . "'" . $filter);
+		my $rv=$sth->execute or die $_[0]->errstr;
+		my $res = $sth->fetchrow_hashref;
+		if(defined $res->{SourceID}) {
+			$SourceID=$res->{SourceID};
+			$SourceDescription=$res->{SourceDescription};
+			$Organization = $res->{Organization};
+			$citation = $res->{Citation};
+		} else {
+			$Organization = $_[1]->{Organization};
+			$SourceDescription = (defined $_[1]->{SourceDescription}) ? $_[1]->{SourceDescription} : "No description";
+			$citation = (defined $_[1]->{citation}) ? $_[1]->{citation}  : "";
+			$sth=$_[0]->prepare(qq(insert into "Sources" ("Organization","SourceDescription","Citation") values ('$Organization','$SourceDescription','$citation') returning "SourceID"));
+			$rv=$sth->execute or die $_[0]->errstr;
+			my $res = $sth->fetchrow_hashref;
+			if(defined $res->{SourceID}) {
+				$SourceID=$res->{SourceID};
+			} else {
+				die "Error al insertar Source";
+			}
+		}
+		$varstr.="\"SourceID\",\"Organization\",\"SourceDescription\",\"Citation\",";
+		$valstr.="$SourceID,'$Organization','$SourceDescription','$citation',";
+		$updstr.="\"SourceID\"=$SourceID,\"Organization\"='$Organization',\"SourceDescription\"='$SourceDescription',\"Citation\"='$citation',";
+	}	
+	# Busca QualityControlLevelID e inserta registro si no existe
+	my ($QualityControlLevelID,$QualityControlLevelCode,$Definition,$Explanation);
+	if(defined $_[1]->{QualityControlLevelCode}) {
+		my $filter = (defined $_[1]->{QualityControlLevelDefinition}) ? " and \"Definition\"='" . $_[1]->{QualityControlLevelDefinition} . "'" : ""; 
+		my $sth=$_[0]->prepare(qq(select "QualityControlLevelCode","QualityControlLevelID","Definition","Explanation" from "QualityControlLevels" where "QualityControlLevelCode"=') .  $_[1]->{QualityControlLevelCode} . "'" . $filter);
+		my $rv=$sth->execute or die $_[0]->errstr;
+		my $res = $sth->fetchrow_hashref;
+		if(defined $res->{QualityControlLevelID}) {
+			$QualityControlLevelCode=$res->{QualityControlLevelCode};
+			$QualityControlLevelID=$res->{QualityControlLevelID};
+			$Definition=$res->{Definition};
+			$Explanation = $res->{Explanation};
+		} else {
+			$QualityControlLevelCode = $_[1]->{QualityControlLevelCode};
+			$Definition = (defined $_[1]->{QualityControlLevelDefinition}) ? $_[1]->{QualityControlLevelDefinition} : "No definition";
+			$Explanation = (defined $_[1]->{QualityControlLevelExplanation}) ? $_[1]->{QualityControlLevelExplanation}  : "No explanation";
+			$sth=$_[0]->prepare(qq(insert into "QualityControlLevels" ("QualityControlLevelCode","Definition","Explanation") values ('$QualityControlLevelCode','$Definition','$Explanation') returning "QualityControlLevelID"));
+			$rv=$sth->execute or die $_[0]->errstr;
+			my $res = $sth->fetchrow_hashref;
+			if(defined $res->{QualityControlLevelID}) {
+				$QualityControlLevelID=$res->{QualityControlLevelID};
+			} else {
+				die "Error al insertar QualityControlLevel";
+			}
+		}
+		$varstr.="\"QualityControlLevelID\",\"QualityControlLevelCode\",";
+		$valstr.="$QualityControlLevelID,'$QualityControlLevelCode',";
+		$updstr.="\"QualityControlLevelID\"=$QualityControlLevelID,\"QualityControlLevelCode\"='$QualityControlLevelCode',";
+	}	
+
+	chop $varstr;
+	chop $valstr;
+	chop $updstr;
+	my $onConflictAction="do nothing";
+	if(defined $opts{"-U"}) {
+		$onConflictAction="do update set $updstr";
+	}
+	my $stmt =qq(insert into "SeriesCatalog" ($varstr) select $valstr from "Sites","Variables","Units",(select * from "Units") timeunits  where "Sites"."SiteCode"=') . $_[1]->{SiteCode} . qq(' and "Variables"."VariableCode"=') . $_[1]->{VariableCode} . qq(' and "Units"."UnitsID"="Variables"."VariableUnitsID" and timeunits."UnitsID"="Variables"."TimeUnitsID" on conflict ("SiteID", "VariableID") $onConflictAction returning "SeriesID");
+	#~ print STDERR "$stmt\n"; 
+	my $sth=$_[0]->prepare($stmt);
+	my $rv=$sth->execute or die $_[0]->errstr;
+	my $res = $sth->fetchrow_hashref;   #[0]->do($stmt) or die $_[0]->errstr;
+	#~ my $res = $sth->fetchrow_arrayref;
+	#~ for(my $i=0;$i<@$res;$i++) {
+		#~ print $res->[$i] . ",";
+	#~ }
+	#~ print "\n";
+	#~ exit;
+	if(defined $res->{SeriesID}) {
+		return "{\"status\":\"200 OK\",\"SeriesID\":" . $res->{SeriesID} . "}";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+	#~ print $stmt . "\n";
+	#~ return 1;
 }
