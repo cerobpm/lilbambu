@@ -114,6 +114,14 @@ switch(lc($accion)) {
 		my $res=odm_load::addSite($dbh,$params,$opciones);
 		print "$res\n";
 		exit;
+	} case "addsites" {
+		my ($params,$opciones) = getOptions(@ARGV);
+		if(!defined $params->{sites}) {
+			die "falta sites=json_array_of_sites";
+		}
+		my $res=odm_load::addSites($dbh,\@{$params->{sites}},$opciones); 
+		print "$res\n";
+		exit;
 	} case "getsites" {
 		my ($params,$opciones) = getOptions(@ARGV);
 		my $res=odm_load::GetSites($dbh,$params,$opciones);
@@ -221,12 +229,20 @@ sub getOptions {
 			#~ print "opcion:$opt\n";
 			push @opciones, $opt;
 		} elsif ($opt =~ /(^.+)=@(.+$)/) {
-			open(my $file,$2) or die "Archivo $2 no encontrado";
-			eval {
-				$params{$1} = decode_json <$file>;
-			} or do {
-				die "El archivo $2 no es un JSON válido";
-			};
+			if($2 eq "") {
+				eval {
+					$params{$1} = decode_json <STDIN>;
+				} or do {
+					die "STDIN no es JSON valido";
+				}
+			} else {
+				open(my $file,$2) or die "Archivo $2 no encontrado";
+				eval {
+					$params{$1} = decode_json <$file>;
+				} or do {
+					die "El archivo $2 no es un JSON válido";
+				};
+			}
 		} elsif ($opt =~ /(^.+)=(.+$)/) {
             $params{$1} = $2;
         } else {

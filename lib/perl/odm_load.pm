@@ -681,6 +681,94 @@ sub addSite {
 	#~ return 1;
 }
 
+=head2 funcion addSites()
+
+
+	$_[0] => database connection handler
+	$_[1] => sites ARRAY  
+	$_[2] => options ARRAY [valid opts -U]  ]
+	
+=head3 returns
+
+ 	{"status":"200 OK","SiteID":"$inserted_site_ids"} o {"status":"400 Bad Request"}
+
+=cut
+
+sub addSites {
+	my %validColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT","Elevation_m"=>"FLOAT","SiteType"=>"STRING","State"=>"STRING","County"=>"STRING","Comments"=>"STRING","Country"=>"STRING");
+	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
+	my %requiredColumns = ("SiteCode"=>"STRING","SiteName"=>"STRING","Latitude"=>"FLOAT","Longitude"=>"FLOAT");
+	#~ my @ColumnsTypes = ("STRING","STRING","INTEGER","STRING","STRING","BOOLEAN","STRING","STRING"); 
+	#~ my @requiredColumnsTypes = ("STRING","STRING","INTEGER");
+	if(!defined $_[1]) {
+		die "Falta sites";
+	}
+	if(ref($_[1]) ne 'ARRAY') {
+		die "\$_[1] debe ser ARRAY ref, pero es" . ref($_[1]) . ".";
+	}
+	#
+	# LEE OPCIONES
+	#
+	my %opts= map { $_ => 1 } @{$_[2]};
+	#
+	#   ITERA sites   #
+	#
+	for(my $i=0;$i<@{$_[1]};$i++) {
+		# CHEQUEA COLUMNAS OBLIGATORIAS
+		columnTypeCheck(\%requiredColumns,$_[1]->[$i],1);
+		my %types=columnTypeCheck(\%validColumns,$_[1]->[$i],2);
+		#~ foreach(keys %types) {       ### PARA DEBUGGING
+			#~ print STDERR "-------types{$_}=".$types{$_}. ".\n"; 
+		#~ }
+	#
+	# CREA SENTENCIA DE INSERCION ITERANDO $_[1]->[$i] y CHEQUEANDO KEYS Y TIPOS   #
+	#
+		my $varstr="";
+		my $valstr="";
+		my $updstr="";
+		foreach my $key (keys %{$_[1]->[$i]}) {
+			#~ my ($index) = grep { $validColumns[$_] eq $key } 0..$#validColumns;
+			$varstr.= "\"" . $key . "\",";
+			$updstr.= "\"" . $key . "\"=";
+			#~ if($ColumnsTypes[$index] eq "STRING") {
+			if($types{$key} eq "STRING") {
+				$valstr.= "'" . $_[1]->{$key} . "',";
+				$updstr .= "'" . $_[1]->{$key} . "',";
+			} else {
+				$valstr.= $_[1]->{$key} . ",";
+				$updstr .= $_[1]->{$key} . ",";
+			}
+			#~ print STDERR "TYPECHECK: $key," . $types{$key} . ", value: " . $_[1]->{$key} ."\n"; ### PARA DEBUGGING
+		}
+		chop $varstr;
+		chop $valstr;
+		chop $updstr;
+		my $onConflictAction="do nothing";
+		if(defined $opts{"-U"}) {
+			$onConflictAction="do update set $updstr";
+		}
+		my $stmt =qq(insert into "Sites" ($varstr) values ($valstr) on conflict (\"SiteCode\") $onConflictAction returning "SiteID");
+		#~ my $stmt =qq(select $valstr);
+		#~ print STDERR "$stmt\n"; 
+		my $sth=$_[0]->prepare($stmt);
+		my $rv=$sth->execute or die $_[0]->errstr;
+		my $res = $sth->fetchrow_hashref;   #[0]->do($stmt) or die $_[0]->errstr;
+		#~ my $res = $sth->fetchrow_arrayref;
+		#~ for(my $i=0;$i<@$res;$i++) {
+			#~ print $res->[$i] . ",";
+		#~ }
+		#~ print "\n";
+		#~ exit;
+		if(defined $res->{SiteID}) {
+			return "{\"status\":\"200 OK\",\"SiteID\":" . $res->{SiteID} . "}";
+		} else {
+			return "{\"status\":\"400 Bad Request\"}";
+		}
+		#~ print $stmt . "\n";
+		#~ return 1;
+	}
+}
+
 
 =head2 funcion GetSites
 

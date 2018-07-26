@@ -1,0 +1,5 @@
+select "DataValues"."LocalDateTime" as "DateTime", "DataValues"."DataValue", "DataValues"."UTCOffset",
+   "DataValues"."CensorCode", "DataValues"."DateTimeUTC","DataValues"."MethodID","DataValues"."SourceID","DataValues"."QualityControlLevelCode",
+   "SeriesCatalogView"."SeriesID","SeriesCatalogView"."SiteCode","SeriesCatalogView"."VariableCode","SeriesCatalogView"."VariableName"
+   from "DataValues","SeriesCatalogView" where "DataValue"."SiteID"="SeriesCatalogView"."SiteID" and "DataValue"."VariableID"="SeriesCatalogView"."VariableID"
+   and "DateTimeUTC">='2018-07-01' and "DateTimeUTC" <='2018-07-26' and "SeriesCatalogView"."SiteCode"='alturas_dinac:155' and "SeriesCatalogView"."VariableCode"='2' and "SeriesCatalogView"."SiteCode"='alturas_dinac:155' and "SeriesCatalogView"."VariableCode"='2' order by "SeriesID","DateTimeUTC"
