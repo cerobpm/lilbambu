@@ -4,12 +4,14 @@
 \alias{harvestSeriesCatalog}
 \title{harvestSeriesCatalog}
 \usage{
-harvestSeriesCatalog(url, SiteCode, update = FALSE)
+harvestSeriesCatalog(url, SiteCode, SourceCode = "Unknown", update = FALSE)
 }
 \arguments{
 \item{url}{WOFWML WS end point}
 
 \item{SiteCode}{FullSiteCode from GetSites}
+
+\item{SourceCode}{source prefix default 'Unknown'}
 
 \item{update}{boolean comportamiento ante SiteID*VariableID duplicado (si TRUE, actualiza)}
 }

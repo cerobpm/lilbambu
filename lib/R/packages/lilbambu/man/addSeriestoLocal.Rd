@@ -4,10 +4,12 @@
 \alias{addSeriestoLocal}
 \title{addSeriestoLocal}
 \usage{
-addSeriestoLocal(params, update = FALSE)
+addSeriestoLocal(params, SourceCode = "Unknown", update = FALSE)
 }
 \arguments{
 \item{params}{lista de parametros (fila del data.frame)}
+
+\item{SourceCode}{prefix default 'Unknown'}
 
 \item{update}{boolean comportamiento ante VariableCode+SiteCode duplicado (si TRUE, actualiza)}
 }

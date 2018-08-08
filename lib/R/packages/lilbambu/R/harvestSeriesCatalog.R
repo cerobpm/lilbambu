@@ -5,19 +5,20 @@
 #' @import WaterML
 #' @param url WOFWML WS end point
 #' @param SiteCode  FullSiteCode from GetSites
-#' @param update boolean comportamiento ante SiteID*VariableID duplicado (si TRUE, actualiza) 
+#' @param SourceCode source prefix default 'Unknown'
+#' @param update boolean comportamiento ante SiteID*VariableID duplicado (si TRUE, actualiza)
 #' @return ""1 row inserted or updated. SeriesID:..." or "nothing inserted/updated"
 #' @export
 #' @examples
 #' harvestSeriesCatalog("http://brasilia.essi-lab.eu/gi-axe/services/cuahsi_1_1.asmx?WSDL",TRUE)
 
-harvestSeriesCatalog <-function(url,SiteCode,update=FALSE)
+harvestSeriesCatalog <-function(url,SiteCode,SourceCode='Unknown',update=FALSE)
 {
   siteinfo<-GetSiteInfo(url,SiteCode)
   results=c()
   for (i in 1:length(siteinfo[,1]))
   {
-    result<-addSeriestoLocal(siteinfo[i,],update)
+    result<-addSeriestoLocal(siteinfo[i,],SourceCode,update)
     results=c(results,result)
   }
   return(results)

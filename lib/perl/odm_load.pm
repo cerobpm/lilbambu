@@ -194,7 +194,7 @@ sub addVariable {
 		$onConflictAction="do update set $updstr";
 	}
 	my $stmt =qq(insert into "Variables" ($varstr) values ($valstr) on conflict (\"VariableCode\") $onConflictAction returning "VariableID");
-	#~ print STDERR "$stmt\n"; 
+	print STDERR "$stmt\n"; 
 	my $sth=$_[0]->prepare($stmt);
 	my $rv=$sth->execute or die $_[0]->errstr;
 	my $res = $sth->fetchrow_hashref;   #[0]->do($stmt) or die $_[0]->errstr;
@@ -1290,7 +1290,7 @@ sub GetUnitsID
 
 
 	$_[0] => database connection handler
-	$_[1] => parameters HASH [valid params=  "SiteCode"=>"STRING"*,"VariableCode"=>"STRING"*,"MethodCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","citation"=>"STRING","qualityControlLevelCode"=>"STRING","qualityControlLevelDefinition"=>"STRING","valueCount"=>"INTEGER","beginDateTime"=>"STRING","endDateTime"=>"STRING","beginDateTimeUTC"=>"STRING","endDateTimeUTC"=>"STRING"       *:required
+	$_[1] => parameters HASH [valid params=  "SiteCode"=>"STRING"*,"VariableCode"=>"STRING"*,"SourceCode"=>"STRING"*,"MethodCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","citation"=>"STRING","qualityControlLevelCode"=>"STRING","qualityControlLevelDefinition"=>"STRING","valueCount"=>"INTEGER","beginDateTime"=>"STRING","endDateTime"=>"STRING","beginDateTimeUTC"=>"STRING","endDateTimeUTC"=>"STRING"       *:required
 	$_[2] => options ARRAY [valid opts -U]  ]
 	
 =head3 returns
@@ -1300,8 +1300,8 @@ sub GetUnitsID
 =cut
 
 sub addSeries {
-	my %validColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING","MethodCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","Citation"=>"STRING","QualityControlLevelCode"=>"STRING","QualityControlLevelDefinition"=>"STRING","ValueCount"=>"INTEGER","BeginDateTime"=>"STRING","EndDateTime"=>"STRING","BeginDateTimeUTC"=>"STRING","EndDateTimeUTC"=>"STRING");
-	my %requiredColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING");
+	my %validColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING","MethodCode"=>"STRING","SourceID"=>"STRING","SourceCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","Citation"=>"STRING","QualityControlLevelCode"=>"STRING","QualityControlLevelDefinition"=>"STRING","ValueCount"=>"INTEGER","BeginDateTime"=>"STRING","EndDateTime"=>"STRING","BeginDateTimeUTC"=>"STRING","EndDateTimeUTC"=>"STRING");
+	my %requiredColumns = ("SiteCode"=>"STRING","VariableCode"=>"STRING","SourceCode"=>"STRING");
 	if(!defined $_[1]) {
 		die "Faltan parametros";
 	}
@@ -1317,6 +1317,7 @@ sub addSeries {
 	#
 	columnTypeCheck(\%requiredColumns,$_[1],1);
 	my %types=columnTypeCheck(\%validColumns,$_[1],2);
+	my $SourceCode=$_[1]->{SourceCode};
 	#
 	# CREA SENTENCIA DE INSERCion   #
 	#
@@ -1339,9 +1340,10 @@ sub addSeries {
 	#  BUSCA MethodID e inserta registro si no existe
 	my ($MethodID,$MethodDescription,$MethodLink,$MethodCode);
 	if(defined $_[1]->{MethodCode}) {
-		my $filter = (defined $_[1]->{MethodDescription}) ? (" and \"MethodDescription\"='" . $_[1]->{MethodDescription} . "'") : "";
-		$filter .= (defined $_[1]->{MethodLink}) ? (" and \"MethodLink\"='" . $_[1]->{MethodLink} . "'") : "";
-		my $sth=$_[0]->prepare(qq(select "MethodCode","MethodID","MethodDescription","MethodLink" from "Methods" where "MethodCode"=') .  $_[1]->{MethodCode} . "'" . $filter);
+		#~ my $filter = (defined $_[1]->{MethodDescription}) ? (" and \"MethodDescription\"='" . $_[1]->{MethodDescription} . "'") : "";
+		#~ $filter .= (defined $_[1]->{MethodLink}) ? (" and \"MethodLink\"='" . $_[1]->{MethodLink} . "'") : "";
+		#~ my $sth=$_[0]->prepare(qq(select "MethodCode","MethodID","MethodDescription","MethodLink" from "Methods" where "MethodCode"=') .  $_[1]->{MethodCode} . "'" . $filter);
+		my $sth=$_[0]->prepare(qq(select "MethodCode","MethodID","MethodDescription","MethodLink" from "Methods" where "MethodCode"='$SourceCode:) .  $_[1]->{MethodCode} . "'");
 		my $rv=$sth->execute or die $_[0]->errstr;
 		my $res = $sth->fetchrow_hashref;
 		if(defined $res->{MethodID}) {
@@ -1350,7 +1352,7 @@ sub addSeries {
 			$MethodDescription = $res->{MethodDescription};
 			$MethodLink = $res->{MethodLink};
 		} else {
-			$MethodCode=$_[1]->{MethodCode};
+			$MethodCode="$SourceCode:" . $_[1]->{MethodCode};
 			$MethodDescription = (defined $_[1]->{MethodDescription}) ? $_[1]->{MethodDescription} : "No description";
 			$MethodLink = (defined $_[1]->{MethodLink}) ? $_[1]->{MethodLink}  : "";
 			$sth=$_[0]->prepare(qq(insert into "Methods" ("MethodCode","MethodDescription","MethodLink") values ('$MethodCode','$MethodDescription','$MethodLink') returning "MethodID"));
@@ -1362,6 +1364,7 @@ sub addSeries {
 				die "Error al insertar Method";
 			}
 		}
+		print STDERR "MethodID:$MethodID\n";
 		$varstr.="\"MethodID\",\"MethodDescription\",";
 		$valstr.="$MethodID,'$MethodDescription',";
 		$updstr.="\"MethodID\"=$MethodID,\"MethodDescription\"='$MethodDescription',";
@@ -1369,9 +1372,10 @@ sub addSeries {
 	#
 	# Busca SourceID e inserta registro si no existe
 	my ($SourceID,$Organization,$SourceDescription,$citation);
-	if(defined $_[1]->{Organization}) {
-		my $filter = (defined $_[1]->{SourceDescription}) ? " and \"SourceDescription\"='" . $_[1]->{SourceDescription} . "'" : ""; 
-		my $sth=$_[0]->prepare(qq(select "SourceID","Organization","SourceDescription","Citation" from "Sources" where "Organization"=') .  $_[1]->{Organization} . "'" . $filter);
+	if(defined $_[1]->{SourceID}) {
+		#~ my $filter = (defined $_[1]->{SourceDescription}) ? " and \"SourceDescription\"='" . $_[1]->{SourceDescription} . "'" : ""; 
+		#~ my $sth=$_[0]->prepare(qq(select "SourceID","Organization","SourceDescription","Citation" from "Sources" where "Organization"=') .  $_[1]->{Organization} . "'" . $filter);
+		my $sth=$_[0]->prepare(qq(select "SourceID","Organization","SourceDescription","Citation" from "Sources" where "SourceCode"='$SourceCode:) .  $_[1]->{SourceID} . "'");
 		my $rv=$sth->execute or die $_[0]->errstr;
 		my $res = $sth->fetchrow_hashref;
 		if(defined $res->{SourceID}) {
@@ -1383,7 +1387,7 @@ sub addSeries {
 			$Organization = $_[1]->{Organization};
 			$SourceDescription = (defined $_[1]->{SourceDescription}) ? $_[1]->{SourceDescription} : "No description";
 			$citation = (defined $_[1]->{citation}) ? $_[1]->{citation}  : "";
-			$sth=$_[0]->prepare(qq(insert into "Sources" ("Organization","SourceDescription","Citation") values ('$Organization','$SourceDescription','$citation') returning "SourceID"));
+			$sth=$_[0]->prepare(qq(insert into "Sources" ("SourceCode","Organization","SourceDescription","Citation") values ('$SourceCode:$SourceID','$Organization','$SourceDescription','$citation') returning "SourceID"));
 			$rv=$sth->execute or die $_[0]->errstr;
 			my $res = $sth->fetchrow_hashref;
 			if(defined $res->{SourceID}) {
@@ -1392,6 +1396,7 @@ sub addSeries {
 				die "Error al insertar Source";
 			}
 		}
+		print STDERR "SourceID:$SourceID\n";
 		$varstr.="\"SourceID\",\"Organization\",\"SourceDescription\",\"Citation\",";
 		$valstr.="$SourceID,'$Organization','$SourceDescription','$citation',";
 		$updstr.="\"SourceID\"=$SourceID,\"Organization\"='$Organization',\"SourceDescription\"='$SourceDescription',\"Citation\"='$citation',";
@@ -1447,6 +1452,89 @@ sub addSeries {
 	#~ exit;
 	if(defined $res->{SeriesID}) {
 		return "{\"status\":\"200 OK\",\"SeriesID\":" . $res->{SeriesID} . "}";
+	} else {
+		return "{\"status\":\"400 Bad Request\"}";
+	}
+	#~ print $stmt . "\n";
+	#~ return 1;
+}
+
+
+=head2 funcion insertDataValues
+
+
+	$_[0] => database connection handler
+	$_[1] => TimeSeries ARRAY of HASHES
+	$_[2] => SiteCode varchar
+	$_[3] => VariableCode varchar
+	$_[4] => SourceCode varchar
+	$_[5] => options ARRAY [valid opts -U]  ]
+	
+=head3 returns
+
+ 	{"status":"200 OK","ValuesID":[valueID_1,ValuesID2...]}  or {"status":"400 Bad Request"}
+
+
+=cut
+
+sub insertDataValues {
+	my %validColumns = ("time"=>"STRING","DataValue"=>"FLOAT","UTCOffset"=>"INTEGER","Qualifier"=>"STRING","MethodCode"=>"STRING","SourceCode"=>"INTEGER","QualityControlLevelCode");
+	#~ my %validColumns  =  map { $_ => 1 } @validColumns;
+	my %requiredColumns = ("time"=>"STRING","DataValues"=>"FLOAT");
+	columnTypeCheck((SiteCode=>"STRING", VariableCode=>"STRING"),(SiteCode=>$_[2], VariableCode=>$_[3]),1);  
+	if(!defined $_[1]) {
+		die "Falta TimeSeries";
+	}
+	if(ref($_[1]) ne 'ARRAY') {
+		die "\$_[1] debe ser ARRAYREF, pero es" . ref($_[1]) . ".";
+	}
+	if(!defined $_[2]) {
+		die "Falta SiteCode";
+	}
+	if(!defined $_[3]) {
+		die "Falta VariableCode";
+	}
+	my $SourceCode = (!defined $_[4]) ? "Unknown" : $_[4];
+	#
+	# LEE OPCIONES
+	#
+	my %opts= map { $_ => 1 } @{$_[5]};
+	#
+	# INICIALIZA VALSTR
+	my $valstr="";	
+	#   ITERA TimeSeries   #
+	#
+	for(my $i=0;$i<@{$_[1]};$i++) {
+		#   CHEQUEA COLUMNAS OBLIGATORIAS   #
+		columnTypeCheck(\%requiredColumns,$_[1]->[$i],1);
+		my %types=columnTypeCheck(\%validColumns,$_[1]->[$i],2);
+		#~ foreach(keys %types) {       ### PARA DEBUGGING
+			#~ print STDERR "-------types{$_}=".$types{$_}. ".\n"; 
+		#~ }
+		$_[1]->[$i]->{UTCOffset} = (!defined $_[1]->[$i]->{UTCOffset}) ? -3 : $_[1]->[$i]->{UTCOffset};
+		$valstr .= "(" . $_[1]->[$i]->{time} . "'::timestamp+'" . $_[1]->{$i}->{UTCOffset} . " hours'::interval, '" . $_[1]->[$i]->{time} . "'::timestamp, " . $_[1]->[$i]->{DataValue} . "," . $_[1]->[$i]->{UTCOffset} . "," . ((defined $_[1]->{$i}->{Qualifier}) ? qq('$SourceCode:$_[1]->{$i}->{Qualifier}') : "null") . "," . ((defined $_[1]->{$i}->{SourceCode}) ? qq('$SourceCode:$_[1]->{$i}->{SourceCode}') : "null") . "," . ((defined $_[1]->{$i}->{MethodCode}) ? qq('$SourceCode:$_[1]->{$i}->{MethodCode}') : "null") . "," . ((defined $_[1]->{$i}->{QualityControlLevelCode}) ? $_[1]->{$i}->{QualityControlLevelCode} : "-9999") . "),";
+	}
+	chop $valstr;
+	#~ my $onConflictAction="do nothing";
+	#~ if(defined $opts{"-U"}) {
+		#~ $onConflictAction="do update set $updstr";
+	#~ }
+	my $stmt =qq(begin;
+create temporary table datavalues_tmp ("LocalDateTime" timestamp,"DateTimeUTC" timestamp,"DataValue" float,"UTCOffset" integer,"SiteCode" varchar,"VariableCode" varchar,"Qualifier" varchar,"MethodCode" varchar,"SourceCode" varchar,"QualityControlLevelCode" integer);
+copy datavalues_tmp from stdin;
+insert into "DataValues" select "LocalDateTime","DateTimeUTC","DataValue","UTCOffset","Sites"."SiteID","Variables"."VariableID","Qualifiers"."Qualifier",coalesce("Methods"."MethodCode",0),coalesce("Sources"."SourceID",0) ,coalesce("QualityControlLevels"."QualityControlLevelID",0) from datavalues_tmp  join "Sites" on (datavalues_tmp."SiteCode"="Sites"."SiteCode") join "Variables" on (datavalues_tmp."VariableCode"="Variables"."VariableCode") left join "Methods" on (datavalues_tmp."MethodCode"="Methods"."MethodCode") left join "Sources" on (datavalues_tmp."SourceCode"="Sources"."SourceCode") left join "QualityControlLevels" on (datavalues_tmp."QualityControlLevelCode"="QualityControlLevels"."QualityControlLevelCode") left join "Qualifiers" on (datavalues_tmp."Qualifier"="Qualifiers"."QualifierCode") on conflict ("SiteID", "VariableID", "SourceID", "DateTimeUTC") do nothing returning count("SiteID");
+commit;);
+	#~ my $stmt =qq(select $valstr);
+	#~ print STDERR "$stmt\n"; exit;
+	my $sth=$_[0]->prepare($stmt);
+	my $rv=$sth->execute or die $_[0]->errstr;
+	my @res;
+	while(my $row=$sth->fetchrow_hashref) {
+		push @res, $row->{ValueID};
+	}
+	my $res = encode_json \@res;
+	if(@res > 0) {
+		return "{\"status\":\"200 OK\",\"SiteID\":" . $res . "}";
 	} else {
 		return "{\"status\":\"400 Bad Request\"}";
 	}
