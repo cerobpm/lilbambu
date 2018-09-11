@@ -98,48 +98,6 @@ sub MakeSOAPEnvelope { #     <- function(CUAHSINamespace, MethodName, parameters
 	default options:
 	 no_proxy 0
 	 output_format array
-#' GetSites
-#'
-#' This function gets the table of sites from the WaterML web service
-#'
-#' @import XML
-#' @param server The URL of the web service ending with .WSDL,
-#'  for example: http://icewater.usu.edu/MudLake/cuahsi_1_0.asmx?WSDL
-#'  alternatively this can be the REST URL to get the sites.
-#' @param west Optional parameter: The west longitude of the geographic
-#'  bounding box in decimal degrees. Allowed values are between -180.0 and +180.0
-#' @param south Optional parameter: The south latitude of the geographic
-#'  bounding box in decimal degrees. Allowed values are between -90.0 and +90.0
-#' @param east Optional parameter: The east longitude of the geographic
-#'  bounding box in decimal degrees. Allowed values are between -180.0 and +180.0
-#' @param north Optional parameter: The north latitude of the geographic
-#'  bounding box in decimal degrees. Allowed values are between -90.0 and +90.0
-#' @return a data.frame of sites. The data.frame has the following columns:
-#' \itemize{
-#' \item SiteID: The site ID in the original database
-#' \item SiteName: The name of the site
-#' \item SiteCode: A short unique code of the site
-#' \item FullSiteCode: The complete unique code of the site in the format NETWORK:CODE.
-#'               Use this value in the GetSiteInfo and GetValues functions
-#' \item Latitude:  The WGS84 latitude in decimal degrees
-#' \item Longitude: The WGS84 longitude in decimal degrees
-#' \item Elevation: The elevation of the site above sea level in meters
-#' \item State:     Only for sites in the USA: the state of the site
-#' \item County:    Only for sites in the USA: The county of the site
-#' \item Comments:  Additional comments about the sites (note: this field is often empty)
-#' }
-#' The output data.frame also has attributes with information about the status:
-#' download.time, parse.time, download.status, parse.status
-#' These attributes can be used for troubleshooting WaterOneFlow/WaterML server errors.
-#' @keywords waterml
-#' @export
-#' @examples
-#' #Getting all sites from a service
-#' sites <- GetSites("http://icewater.usu.edu/MudLake/cuahsi_1_0.asmx?WSDL")
-#'
-#' #Getting a subset of sites restricted by geographical area
-#' server <- "http://drought.usu.edu/usbrreservoirs/cuahsi_1_1.asmx?WSDL"
-#' sites_subset <- GetSites(server, west=-113.0, south=35.0, east=110.0, north=40.0)
 
 =cut
 

@@ -1,11 +1,38 @@
-[1mNAME[0m
+NAME
     plwofclient
 
-[1mSYNOPSIS[0m
+SYNOPSIS
             use plwofclient;
             my $envelope=plwofclient::MAkeSoapEnvelope("http://www.cuahsi.org/his/1.1/ws/", "GetSitesObject");
 
-[1mDESCRIPTION[0m
+DESCRIPTION
             This is a perl client for WaterOneFlow Web Service
 
-  [1mfunction MakeSoapEnvelope[0m
+  function MakeSoapEnvelope
+  function GetSitesFromWOF
+            GetSitesFromWOF($url, \%parameters, \%options=("no_proxy"=>1,"output_format"=>"json"|"waterml"|"array") );
+            default options:
+             no_proxy 0
+             output_format array
+
+  toJSON
+            toJSON(\@Arr,pretty);
+
+  toText
+            toText(\%Hash)
+
+  toCSV
+            toCSV(\@Arr,\%options("sep"=>",","pretty"=>0);
+            default sep=, pretty=false
+
+  parseWML
+            _[0]: waterML string
+            _[1]: %opciones = ( "output_format"=> (array | waterml | json | csv | waterml_pretty | csv_pretty | json_pretty), "sep"=>)
+
+  MakeWOFRequest
+    _[0]: server _[1]: request [ GetSites | GetSiteInfo | GetVariables |
+    GetValues ] _[2]: parameters [ depende de request, leer documentaacion ]
+    _[3]: options [ no_proxy=>0 ]
+
+    returns waterml string
+
