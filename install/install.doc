@@ -1,0 +1,100 @@
+### LILBAMBU ###
+# 
+# INSTRUCCIONES DE INSTALACION 
+#
+# 1. ENV      exportar variables de ambiente
+export lilbambu_home=~/lilbambu     (indicar la ubicacion de lilbambu)
+echo "export lilbambu_home=~/lilbambu" >> ~/.bashrc
+echo "PERL5LIB=$PERL5LIB:$lilbambu_home/lib/perl" >> ~/.bashrc
+
+# 2. APT   instalar dependencias
+apt update
+apt install perl5 postgresql tomcat8 cpanp
+
+# 3. PERL   instalar dependencias
+export PERL5LIB=$PERL5LIB:$lilbambu_home/lib/perl
+cpanp -i POSIX utf8 Encode  Getopt::Std Switch Env CGI JSON use CGI Astro::Time  DBI utf8 autobox::universal Config::IniFiles HTTP::Request LWP::UserAgent XML::LibXML
+
+# 4.  POSTGRESQL    crear base de datos y usuarios, poblar base de datos y configurar permisos 
+su postgres
+psql -c "create user $USER with superuser"
+exit
+createdb ODM
+psql ODM -f $lilbambu_home/lib/psql/ODMpg.sql
+psql ODM -c "create user sololectura with login"
+psql ODM -c "alter user sololectura with password 'alturas'"
+psql ODM -c "grant select on all tables is schema public to sololectura" 
+nano /etc/postgresql/9.6/main/pg_hba.conf 
+	#  # "local" is for Unix domain socket connections only
+	#	#local   all             all                                     peer   <- comentar esta linea
+	#local   all             $USER                                           peer       <- agregar esta
+	#local   ODM             sololectura                                  trust   <- y esta
+#        host   ODM             sololectura          127.0.0.1/32             trust   <- y esta
+#
+# 5. nano $lilbambu_home/config/lilbambu.ini  setear parametros de conexión a DB ODM
+
+# 6. TOMCAT 
+apt-get install default-jdk
+update-alternatives --config java   (encontrar el directorio de JAVA_HOME)
+nano /etc/environment
+agregar la linea: JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java"
+source /etc/environment
+groupadd tomcat
+useradd -s /bin/false -g tomcat -d /opt/tomcat tomcat
+wget http://www-eu.apache.org/dist/tomcat/tomcat-8/v8.5.24/bin/apache-tomcat-8.5.24.tar.gz
+mkdir /opt/tomcat
+tar xvf apache-tomcat-8*tar.gz -C /opt/tomcat --strip-components=1
+cd /opt/
+sudo chown -R tomcat tomcat/
+nano /etc/systemd/system/tomcat.service 
+Pegar lo siguiente:
+[Unit]
+Description=Apache Tomcat Web Application Container
+After=network.target
+
+[Service]
+Type=forking
+
+Environment=JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64/jre    <- aca va JAVA_HOME
+Environment=CATALINA_PID=/opt/tomcat/temp/tomcat.pid
+Environment=CATALINA_HOME=/opt/tomcat
+Environment=CATALINA_BASE=/opt/tomcat
+Environment='CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC'
+Environment='JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom'
+
+ExecStart=/opt/tomcat/bin/startup.sh
+ExecStop=/opt/tomcat/bin/shutdown.sh
+
+User=tomcat
+Group=tomcat
+UMask=0007
+RestartSec=10
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+-----listo-------------------
+sudo systemctl daemon-reload
+sudo systemctl start tomcat
+sudo systemctl status tomcat 
+Buscar http://localhost:8080 en el browser para chequear que tomcat este funcionando
+
+nano /var/lib/tomcat8/conf/web.xml   descomentar esta parte:
+    <servlet>
+         <servlet-name>cgi</servlet-name>
+         <servlet-class>org.apache.catalina.servlets.CGIServlet</servlet-class>
+         <init-param>
+           <param-name>cgiPathPrefix</param-name>
+           <param-value>WEB-INF/cgi</param-value>
+         </init-param>
+         <load-on-startup>5</load-on-startup>
+     </servlet>
+#sudo service tomcat8 restart
+
+# 7. plWOF server desplegar
+
+cp $lilbambu_home/bin/plwof.war /var/lib/tomcat8/webapps
+
+# 8. GEOSERVER  desplegar
+
+cp $lilbambu_home/bin/geoserver.war /var/lib/tomcat8/webapps 

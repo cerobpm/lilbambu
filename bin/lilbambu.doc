@@ -1,0 +1,39 @@
+[1mDESCRIPTION[0m
+    Este script permite insertar y extraer registros de la base de datos pgODM
+    usando los módulos odm_load y plwofclient, y acceder a servicios WOF-WML
+    de terceros. El primer parametro debe ser una de las siguientes acciones,
+    seguidas por parametros key=value y/o opciones precedidas por '-', p. ej,
+    -U
+
+            addvariable     VariableCode=STRING VariableName=STRING VariableUnitsID=INTEGER  SampleMedium=STRING ValueType=STRING IsRegular=BOOLEAN DataType=STRING GeneralCategory=STRINGTimeSupport=INTEGERTimeUnitsID=INTEGERNoDataValue=FLOAT
+        
+            getvariables    VariableID=INTEGER VariableCode=STRING VariableName=STRING VariableUnitsID=INTEGER  SampleMedium=STRING ValueType=STRING IsRegular=BOOLEAN DataType=STRING  GeneralCategory=STRING TimeSupport=INTEGER TimeUnitsID=INTEGER
+        
+            addsource        SourceCode=STRING  Organization=STRING  SourceDescription=STRING  SourceLink=STRING  ContactName=STRING  Phone=STRING  Email=STRING  Address=STRING City=STRING State=STRING ZipCode=STRING Citation=STRING MetadataID=INTEGER
+        
+            getsources       SourceID=INTEGER Organization=STRING SourceDescription=STRING SourceLink=STRING ContactName=STRING Phone=STRING  Email=STRING Address=STRING City=STRING State=STRING ZipCode=STRING Citation=STRING MetadataID=INTEGER SourceCode=STRING
+        
+            addsite          SiteCode=STRING SiteName=STRING Latitude=FLOAT Longitude=FLOAT Elevation_m=FLOAT SiteType=STRING State=STRING County=STRING Comments=STRING Country=STRING
+        
+            addsites         SiteCode=STRING SiteName=STRING Latitude=FLOAT Longitude=FLOAT Elevation_m=FLOAT SiteType=STRING State=STRING County=STRING Comments=STRING Country=STRING
+        
+            getsiteinfo          SiteCode=STRING
+            addvalues        Values=ARRAY SiteID=INTEGER VariableID=INTEGER MethodID=INTEGER SourceID=INTEGER QualityControl=INTEGER UTCOffset=INTEGER
+        
+            getvalues        SiteCode=STRING VariableCode=STRING StartDate=STRING EndDate=STRING
+
+            getunitsid       UnitsName=STRING UnitsType=STRING
+
+            addseries        SiteCode=STRING  VariableCode=STRING  MethodCode=STRING  SourceID=STRING  SourceCode=STRING  MethodDescription=STRING  MethodLink=STRING  Organization=STRING  SourceDescription=STRING Citation=STRING QualityControlLevelCode=STRING QualityControlLevelDefinition=STRING ValueCount=INTEGER BeginDateTime=STRING EndDateTime=STRING BeginDateTimeUTC=STRING EndDateTimeUTC=STRING
+        
+            getfromserver    -s server[url], -r request[GetSites,GetSiteInfo,GetVariables,GetValues], -p params [key=val,key=val], =f output_format [default=waterml,csv,json], -O output_file [default STDOUT], -S separator [default=,], -R raw [default=false],-P pretty [default=false], -b no_proxy default=false, -I insert into own ODM, -U on conflict update (ODM)
+        
+            parsewml         -f output_format [default=waterml,csv,json], -O output_file [default STDOUT], -S separator [default=,], -P pretty [default=false], -i input_file [use - para stdin]
+
+[1mPOD ERRORS[0m
+    Hey! [1mThe above document had some coding errors, which are explained
+    below:[0m
+
+    Around line 17:
+        Non-ASCII character seen before =encoding in 'módulos'. Assuming UTF-8
+

@@ -1,0 +1,314 @@
+\documentclass{article}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+
+%%  Latex generated from POD in document odm_load.pm
+%%  Using the perl module Pod::LaTeX
+%%  Converted on Mon Aug 13 19:51:54 2018
+
+
+\usepackage{makeidx}
+\makeindex
+
+
+\begin{document}
+
+%% \tableofcontents
+
+\section{NAME\label{NAME}\index{NAME}}
+
+
+odm\_load package
+
+\section{SYNOPSIS\label{SYNOPSIS}\index{SYNOPSIS}}
+\begin{verbatim}
+        use odm_load;
+        my $dbh=odm_load::dbConnect;
+        my %params=("VariableCode"=>"2","VariableName"=>"Gage height","VariableUnitsID"=>52);
+        my @opts=("-U");
+        my $status=odm_load::addVariable($dbh,\%params,\@opts);
+\end{verbatim}
+\section{DESCRIPTION\label{DESCRIPTION}\index{DESCRIPTION}}
+\begin{verbatim}
+        Este modulo sirve para insertar, editar y seleccionar registros de la base de datos ODM/PGSQL
+\end{verbatim}
+\subsection*{FUNCION dbConnect()\label{FUNCION_dbConnect_}\index{FUNCION dbConnect()}}
+\begin{verbatim}
+        $_[0] => SCALAR   configuration file location .ini 
+        $_[1] => HASH (DBUSER=>username,DBPASSWORD=>pass) (opcional, override conf file)
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+         database handle object (from DBI->connect)
+\end{verbatim}
+\subsection*{FUNCION addVariables()\label{FUNCION_addVariables_}\index{FUNCION addVariables()}}
+\begin{description}
+
+\item[{\$\_[0] =$>$ database handle object (from}] \textbf{DBI-$>$connect)}
+\item[{\$\_[1] =$>$ HASHREF parametros: ( "VariableCode"=$>$}] \textbf{"10" , "VariableName"=$>$ "Discharge","VariableUnitsID"=$>$36)}
+\item[{\$\_[2] =$>$ ARRAYREF options -U =$>$ on}] \textbf{conflict action do update}\end{description}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","VariableID":"$inserted_variable_id"} o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion columnTypeCheck()\label{funcion_columnTypeCheck_}\index{funcion columnTypeCheck()}}
+\begin{verbatim}
+        $_[0] => Column Names ARRAY
+        $_[1] => Column Types ARRAY
+        $_[2] => input Columns HASH
+        $_[3] => 1:allRequired, 2:checkValid, 0:none
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        HASH of valid Column names=>{types}
+\end{verbatim}
+\subsection*{funcion GetVariables()\label{funcion_GetVariables_}\index{funcion GetVariables()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  VariableCode"=>"STRING","VariableName"=>"STRING","VariableUnitsID"=>"INTEGER", "SampleMedium"=>"STRING","ValueType"=>"STRING","IsRegular"=>"BOOLEAN","DataType"=>"STRING", "GeneralCategory"=>"STRING","TimeSupport"=>"INTEGER","TimeUnitsID"=>"INTEGER
+        $_[2] => options ARRAY [valid opts -f=[wml,json,fwt,csv]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        VariablesResponse STRING in requested format (wml,json,fwt,csv) o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion addSource()\label{funcion_addSource_}\index{funcion addSource()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "SourceID"=>"INTEGER","Organization"=>"STRING","SourceDescription"=>"STRING","SourceLink"=>"STRING","ContactName"=>"STRING","Phone"=>"STRING", "Email"=>"STRING","Address"=>"STRING","City"=>"STRING","State"=>"STRING","ZipCode"=>"STRING","Citation"=>"STRING","MetadataID"=>"INTEGER"
+        $_[2] => options ARRAY [valid opts -U]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","SourceID":"$inserted_source_id"} o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion GetSources()\label{funcion_GetSources_}\index{funcion GetSources()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "SourceID"=>"INTEGER","Organization"=>"STRING","SourceDescription"=>"STRING","SourceLink"=>"STRING","ContactName"=>"STRING","Phone"=>"STRING", "Email"=>"STRING","Address"=>"STRING","City"=>"STRING","State"=>"STRING","ZipCode"=>"STRING","Citation"=>"STRING","MetadataID"=>"INTEGER"
+        $_[2] => options ARRAY [valid opts -f [wml,json,fwt,csv]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        ArrayOfSourceInfo STRING in requested format (wml,json,fwt,csv) o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion makeRestRequest()\label{funcion_makeRestRequest_}\index{funcion makeRestRequest()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "Organization"=>"STRING"*,"RequestName"=>"STRING"*,"method"=>"STRING"       *:required
+        $_[2] => options ARRAY [valid opts -f]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        HTTP Response content STRING in requested format (wml) o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion GetSourceLink()\label{funcion_GetSourceLink_}\index{funcion GetSourceLink()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => Organization STRING
+        $_[2] => options ARRAY [valid opts -U]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        STRING SourceLink
+\end{verbatim}
+\subsection*{funcion addSite()\label{funcion_addSite_}\index{funcion addSite()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "Organization"=>"STRING"*,"RequestName"=>"STRING"*,"method"=>"STRING"       *:required
+        $_[2] => options ARRAY [valid opts -U]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","SiteID":"$inserted_site_id"} o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion addSites()\label{funcion_addSites_}\index{funcion addSites()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => sites ARRAY  
+        $_[2] => options ARRAY [valid opts -U]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","SiteID":"$inserted_site_ids"} o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion GetSites\label{funcion_GetSites}\index{funcion GetSites}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "SiteID"=>"INTEGER","SiteCode"=>"STRING","SiteName"=>"STRING","north"=>"FLOAT","south"=>"FLOAT","east"=>"FLOAT","west"=>"FLOAT","SiteType"=>"STRING","State"=>"STRING","County"=>"STRING"]
+        $_[2] => options ARRAY [valid opts -f]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        siteResponse STRING in requested format  or {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion GetSiteInfo()\label{funcion_GetSiteInfo_}\index{funcion GetSiteInfo()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "SiteCode"=>"STRING"]
+        $_[2] => options ARRAY [valid opts -f]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        SitesResponse STRING in requested format  or {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion addValues\label{funcion_addValues}\index{funcion addValues}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "Values"=>"ARRAY"*,"SiteID"=>"INTEGER"*,"VariableID"=>"INTEGER"*,"MethodID"=>"INTEGER","SourceID"=>"INTEGER"*,"QualityControl"=>"INTEGER","UTCOffset"=>"INTEGER"]    *:required
+        $_[2] => options ARRAY [valid opts -U]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","ValuesID":[valueID_1,ValuesID2...]}  or {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion GetValues\label{funcion_GetValues}\index{funcion GetValues}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "SiteCode"=>"STRING"*,"VariableCode"=>"STRING"*,"StartDate"=>"STRING"*,"EndDate"=>"STRING"*]    *:required
+        $_[2] => options ARRAY [valid opts -f]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        timeSeriesResponse STRING in required format  or {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion parseWML()\label{funcion_parseWML_}\index{funcion parseWML()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters  input=WMLSTRING* o file=FILENAME* , source=STRING* 
+        $_[2] => options ARRAY [valid opts -f]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        200 Ok or 400 Bad Request ; STRING in required format  si se indica -f wml,json,fwt,csv
+=cut
+\end{verbatim}
+
+
+sub parseWML
+\{
+	my \$str;
+	if(ref(\$\_[1]) ne "HASH") \{
+		die "$\backslash$\$\_[1] debe ser un HASH$\backslash$n";
+	\}
+	if(defined \$\_[1]-$>$\{input\}) \{
+		\$str=\$\_[1]-$>$\{input\};
+	\} elsif(defined \$\_[1]-$>$\{file\}) \{
+		open(my \$file,\$\_[1]-$>$\{file\}) or die "No se pudo abrir el archivo " . \$\_[1]-$>$\{file\} . " para lectura$\backslash$n";
+		while($<$\$file$>$) 
+		\{
+			\$str .= \$\_;
+		\}
+	\} else \{
+		die "Falta parametro input o file$\backslash$n";
+	\}
+	if(!defined \$\_[1]-$>$\{source\}) \{
+		die "Falta parametro source$\backslash$n";
+	\}
+	\#
+	\# LEE OPCIONES
+	\#
+	my \%opts;
+	if(defined \$\_[2]) \{
+		if(ref(\$\_[2]) ne "ARRAY") \{
+			die "$\backslash$\$\_[2] debe ser ARRAY ref, pero es" . ref(\$\_[2]) . ".";
+		\}
+		foreach(@\$\_[2]) \{
+			\$\_ =\texttt{\~{}} s/\^{}-+//g;
+			if(\$\_ =\texttt{\~{}} /\^{}($\backslash$.+)=($\backslash$.+)\$/) \{
+				\$opts\{\$1\}=\$2;
+			\} else \{
+				\$opts\{\$\_\}=1;
+			\}
+		\}
+		\#\texttt{\~{}} \%opts= map \{ \$\_ =$>$ 1 \} @\{\$\_[2]\};
+	\}
+	\#\texttt{\~{}} print STDERR \$str . "$\backslash$n";
+	my \$data;
+	eval \{
+		\$data = XML::LibXML-$>$load\_xml(string=$>$\$str);
+	\} or do \{
+		die "No se pudo parsear la respuesta pues no es XML valido$\backslash$n";
+	\};
+	my \$format = (defined \$opts\{f\}) ? \$opts\{f\} : "pg";
+	if(\$data-$>$exists('//variables')) \{
+		my \$allres = "";
+		\#\texttt{\~{}} print STDERR "variables Exists$\backslash$n";
+		my @variables = \$data-$>$find('//variables')-$>$[0]-$>$childNodes();
+		\#\texttt{\~{}} if(@variables $>$ 0) \{
+		my \$n=0;
+		foreach my \$var (@variables) \{
+			my \$literal = \$var-$>$to\_literal;
+			print STDERR "varnum:\$n,literal:\$literal$\backslash$n";
+			my \%params;
+			my \%validColumns = ("variableCode"=$>$"STRING","variableName"=$>$"STRING","variableDescription"=$>$"STRING", "unitsName"=$>$"STRING", "unitsType"=$>$"STRING","sampleMedium"=$>$"STRING","valueType"=$>$"STRING","isRegular"=$>$"BOOLEAN","dataType"=$>$"STRING", "generalCategory"=$>$"STRING","timeSupport"=$>$"INTEGER","timeUnitsID"=$>$"INTEGER");
+			foreach my \$key (keys \%validColumns) \{
+				my \$xpath=(\$key =\texttt{\~{}} /units/) ? ( "./unit/" . \$key . "[1]" ) : "./" . \$key . "[1]";
+				if(\$var-$>$exists(\$xpath)) \{
+					my \$node = \$var-$>$findnodes(\$xpath)-$>$[0];
+					my \$val = \$node-$>$textContent;
+					\$params\{\$key\} = (\$key eq "variableCode") ? \$\_[1]-$>$\{source\} . ":" .  \$val : \$val;
+					\#\texttt{\~{}} print STDERR "varnum:\$n;key:\$key, val:\$val$\backslash$n";
+				\}
+			\}
+			if(\$format eq "pg") \{
+				if(defined \$params\{variableCode\} and defined \$params\{variableName\} and defined \$params\{unitsName\} and defined  \$params\{unitsType\}) \{ 
+					my \%upperparams = map \{ ucfirst(\$\_) =$>$ \$params\{\$\_\} \} keys \%params;
+					my \$UnitsID = odm\_load::GetUnitsID(\$\_[0],$\backslash$\%upperparams);
+					\#\texttt{\~{}} print STDERR "unitsID:\$UnitsID, variableName:" . \$upperparams\{VariableName\} . "$\backslash$n";
+					\#\texttt{\~{}} next;
+					\$upperparams\{VariableUnitsID\}=\$UnitsID;
+					delete \$upperparams\{UnitsName\};
+					delete \$upperparams\{UnitsType\};
+					delete \$upperparams\{VariableDescription\};
+					my @opts=("-U");
+					my \$res = odm\_load::addVariable(\$\_[0],$\backslash$\%upperparams,$\backslash$@opts);
+					\$allres .= \$res;
+				\}
+			\}
+			\$n++;
+		\}
+		if(\$allres eq "") \{ 
+			print STDERR "No se encontraron registros$\backslash$n";
+			return 1;
+		\} else \{
+			return \$allres . "$\backslash$n";
+		\} 
+	\}
+\}
+
+\subsection*{funcion GetUnitsID()\label{funcion_GetUnitsID_}\index{funcion GetUnitsID()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters  UnitsName=STRING* UnitsType=STRING*
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        UnitsID INTEGER   or 349
+\end{verbatim}
+\subsection*{funcion addSeries()\label{funcion_addSeries_}\index{funcion addSeries()}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => parameters HASH [valid params=  "SiteCode"=>"STRING"*,"VariableCode"=>"STRING"*,"SourceCode"=>"STRING"*,"MethodCode"=>"STRING","MethodDescription"=>"STRING","MethodLink"=>"STRING","Organization"=>"STRING","SourceDescription"=>"STRING","citation"=>"STRING","qualityControlLevelCode"=>"STRING","qualityControlLevelDefinition"=>"STRING","valueCount"=>"INTEGER","beginDateTime"=>"STRING","endDateTime"=>"STRING","beginDateTimeUTC"=>"STRING","endDateTimeUTC"=>"STRING"       *:required
+        $_[2] => options ARRAY [valid opts -U]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","SiteID":"$inserted_series_id"} o {"status":"400 Bad Request"}
+\end{verbatim}
+\subsection*{funcion insertDataValues\label{funcion_insertDataValues}\index{funcion insertDataValues}}
+\begin{verbatim}
+        $_[0] => database connection handler
+        $_[1] => TimeSeries ARRAY of HASHES
+        $_[2] => SiteCode varchar
+        $_[3] => VariableCode varchar
+        $_[4] => SourceCode varchar
+        $_[5] => options ARRAY [valid opts -U]  ]
+\end{verbatim}
+\subsubsection*{returns\label{returns}\index{returns}}
+\begin{verbatim}
+        {"status":"200 OK","ValuesID":[valueID_1,ValuesID2...]}  or {"status":"400 Bad Request"}
+\end{verbatim}
+\printindex
+
+\end{document}

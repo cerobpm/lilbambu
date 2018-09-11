@@ -1,0 +1,8 @@
+SELECT
+    "Sites"."Geometry",
+    "SeriesCatalog".*, 
+    'http://localhost:8080/plwof/ws/GetValues?SiteCode=' || "SeriesCatalog"."SiteCode" || '&VariableCode=' || "SeriesCatalog"."VariableCode" || '&StartDate=' || to_char(current_timestamp - interval '7 days','YYYY-MM-DD"T"HH24:MI:SS') || '&EndDate=' || to_char(current_timestamp,'YYYY-MM-DD"T"HH24:MI:SS') "WaterML"
+FROM "Sites"
+JOIN "SeriesCatalog"
+ON ("Sites"."SiteCode"="SeriesCatalog"."SiteCode" and "VariableName" = 'Discharge'
+ORDER BY "SiteCode","VariableName","SourceID"

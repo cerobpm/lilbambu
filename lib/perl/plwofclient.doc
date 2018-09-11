@@ -1,0 +1,11 @@
+[1mNAME[0m
+    plwofclient
+
+[1mSYNOPSIS[0m
+            use plwofclient;
+            my $envelope=plwofclient::MAkeSoapEnvelope("http://www.cuahsi.org/his/1.1/ws/", "GetSitesObject");
+
+[1mDESCRIPTION[0m
+            This is a perl client for WaterOneFlow Web Service
+
+  [1mfunction MakeSoapEnvelope[0m
